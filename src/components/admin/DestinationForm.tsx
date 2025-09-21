@@ -343,6 +343,8 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
 
             // If there are pending files, upload them now and replace previews with real URLs
             const finalImageUrls = [...imageUrls];
+            // Use a local array to collect public_ids during uploads to avoid relying on async React state updates
+            const localPublicIds = [...publicIds];
             for (let i = 0; i < uploadFiles.length; i++) {
                 const file = uploadFiles[i];
                 if (file) {
@@ -357,8 +359,8 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                             });
                         });
                         finalImageUrls[i] = res.url;
-                        // store public id
-                        setPublicIds(prev => { const np = [...prev]; np[i] = res.public_id || null; return np; });
+                        // store public id locally so it's immediately available for the payload
+                        localPublicIds[i] = res.public_id || null;
                         // mark file as uploaded
                         setUploadFiles(prevF => { const nf = [...prevF]; nf[i] = null; return nf; });
                         setUploadProgress(prev => { const np = [...prev]; np[i] = 100; return np; });
@@ -368,14 +370,17 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 }
             }
 
+            // persist collected public ids into state once (batch)
+            setPublicIds(localPublicIds);
+
             const finalData = {
                 ...formData,
                 slug: slugValue,
                 imageUrl: finalImageUrls[0] || '',
                 galleryImages: finalImageUrls,
-                // include public id fields so server can persist them for deletion later
-                imagePublicId: publicIds && publicIds[0] ? publicIds[0] : null,
-                galleryPublicIds: publicIds && publicIds.length > 0 ? publicIds : [],
+                // include public id fields so server can persist them for deletion later (use localPublicIds)
+                imagePublicId: localPublicIds && localPublicIds[0] ? localPublicIds[0] : null,
+                galleryPublicIds: localPublicIds && localPublicIds.length > 0 ? localPublicIds : [],
                 // ensure numeric fields are numbers
                 duration: Number(formData.duration) || 0,
                 minPeople: Number(formData.minPeople) || 0,
