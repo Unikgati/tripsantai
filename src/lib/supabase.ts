@@ -63,11 +63,19 @@ export async function upsertDestination(dest: any): Promise<any> {
         sessionToken = '';
       }
 
+      // If no session token is available in the browser, fail fast with a helpful message.
+      // This avoids sending anonymous requests to the server which will return 401 and
+      // makes it easier to debug the common "curl works but UI fails" scenario where
+      // the user is logged in on a different origin or the session isn't present.
+      if (!sessionToken) {
+        throw new Error('Missing session token. Please login as admin and refresh the page before saving.');
+      }
+
       const resp = await fetch('/api/upsert-destination', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}),
+          'Authorization': `Bearer ${sessionToken}`,
         },
         body: JSON.stringify(dest),
       });

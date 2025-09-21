@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useToast } from '../Toast';
 import ReactQuill from 'react-quill';
 import ItineraryEditor from '../ItineraryEditor';
 import { Destination, PriceTier } from '../../types';
@@ -27,6 +28,7 @@ const ALL_FACILITIES = [
 ];
 
 export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, onSave, onCancel, allCategories }) => {
+    const { showToast } = useToast();
     const [formData, setFormData] = useState<Destination>(destination);
     const [isSaving, setIsSaving] = useState(false);
     const [customFacility, setCustomFacility] = useState('');
@@ -345,7 +347,7 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
         e.preventDefault();
         setIsSaving(true);
         // Simulate API Call
-        setTimeout(() => {
+    setTimeout(async () => {
             // Build payload with DB-friendly keys (camelCase OK, server maps them)
             const slugValue = formData.slug && formData.slug.trim() !== ''
                 ? formData.slug.trim()
@@ -365,8 +367,13 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 categories: formData.categories || [],
                 mapCoordinates: formData.mapCoordinates || null,
             };
-            onSave(finalData);
-            // No need to set isSaving(false) as the component will unmount
+            try {
+                await onSave(finalData);
+            } catch (err: any) {
+                const msg = (err && err.message) ? err.message : 'Gagal menyimpan destinasi. Coba lagi.';
+                try { showToast(msg, 'error'); } catch {}
+            }
+            // No need to set isSaving(false) as the component will unmount in success path
         }, 1500);
     };
 
