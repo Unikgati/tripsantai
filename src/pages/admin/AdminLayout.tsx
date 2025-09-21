@@ -45,6 +45,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     const navigate = useNavigate();
     const { showToast } = useToast();
 
+    // Defensive: props may be null at runtime (from API fetch); ensure safe defaults
+    const safeDestinations = destinations ?? [];
+    const safeBlogPosts = blogPosts ?? [];
+    const safeOrders = orders ?? [];
+
     const supabaseConfigured = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
     const cloudinaryConfigured = !!import.meta.env.VITE_CLOUDINARY_CLOUD_NAME && !!import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
@@ -131,10 +136,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     </div>
 
                     <Routes>
-                        <Route index element={<AdminDashboardPage destinationCount={destinations.length} blogPostCount={blogPosts.length} totalOrders={orders.length} newOrders={orders.filter(o => o.status === 'Baru').length} />} />
-                        <Route path="destinations" element={<AdminDestinationsPage destinations={destinations} onSave={onSaveDestination} onDelete={onDeleteDestination} />} />
-                        <Route path="blog" element={<AdminBlogPage blogPosts={blogPosts} onSave={onSaveBlogPost} onDelete={onDeleteBlogPost} />} />
-                        <Route path="orders" element={<AdminOrdersPage destinations={destinations} orders={orders} onUpdateStatus={onUpdateOrderStatus} onUpdateDepartureDate={onUpdateOrderDepartureDate} onConfirmPayment={onConfirmPayment} onDelete={onDeleteOrder} onUpdateParticipants={onUpdateOrderParticipants} appSettings={appSettings} onGenerateInvoice={async (order) => {
+                        <Route index element={<AdminDashboardPage destinationCount={safeDestinations.length} blogPostCount={safeBlogPosts.length} totalOrders={safeOrders.length} newOrders={safeOrders.filter(o => o.status === 'Baru').length} />} />
+                        <Route path="destinations" element={<AdminDestinationsPage destinations={safeDestinations} onSave={onSaveDestination} onDelete={onDeleteDestination} />} />
+                        <Route path="blog" element={<AdminBlogPage blogPosts={safeBlogPosts} onSave={onSaveBlogPost} onDelete={onDeleteBlogPost} />} />
+                        <Route path="orders" element={<AdminOrdersPage destinations={safeDestinations} orders={safeOrders} onUpdateStatus={onUpdateOrderStatus} onUpdateDepartureDate={onUpdateOrderDepartureDate} onConfirmPayment={onConfirmPayment} onDelete={onDeleteOrder} onUpdateParticipants={onUpdateOrderParticipants} appSettings={appSettings} onGenerateInvoice={async (order) => {
                                 try {
                                     // Create or persist an invoice record and navigate to public invoice page
                                     const inv = await createInvoiceForOrder(order.id, order.totalPrice, { customerName: order.customerName, destinationTitle: order.destinationTitle });
