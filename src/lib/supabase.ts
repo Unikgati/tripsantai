@@ -74,23 +74,25 @@ export async function upsertDestination(dest: any): Promise<any> {
 
       if (!resp.ok) {
         const text = await resp.text().catch(() => null);
-        // fall through to client-side upsert fallback below
-        console.warn('[UPsert] server endpoint failed, falling back to client upsert', resp.status, text);
-      } else {
-        const json = await resp.json();
-        const row = json?.data ?? json?.destination ?? null;
-        if (row) {
-          return {
-            ...row,
-            imageUrl: row.imageurl ?? row.imageUrl ?? '',
-            galleryImages: row.galleryimages ?? row.galleryImages ?? row.gallery_images ?? null,
-            longDescription: row.longdescription ?? row.longDescription ?? '',
-            priceTiers: row.pricetiers ?? row.priceTiers ?? null,
-            minPeople: row.minpeople ?? row.minPeople ?? null,
-            mapCoordinates: row.mapcoordinates ?? row.mapCoordinates ?? null,
-            created_at: row.created_at ?? row.createdAt ?? null,
-          };
-        }
+        // Do NOT fallback to client upsert (anonymous key) because of RLS.
+        // Instead surface the server error so the UI can show a clear message.
+        const errMsg = `[UPsert] server endpoint failed ${resp.status} ${text || ''}`;
+        console.warn(errMsg);
+        throw new Error(errMsg);
+      }
+      const json = await resp.json();
+      const row = json?.data ?? json?.destination ?? null;
+      if (row) {
+        return {
+          ...row,
+          imageUrl: row.imageurl ?? row.imageUrl ?? '',
+          galleryImages: row.galleryimages ?? row.galleryImages ?? row.gallery_images ?? null,
+          longDescription: row.longdescription ?? row.longDescription ?? '',
+          priceTiers: row.pricetiers ?? row.priceTiers ?? null,
+          minPeople: row.minpeople ?? row.minPeople ?? null,
+          mapCoordinates: row.mapcoordinates ?? row.mapCoordinates ?? null,
+          created_at: row.created_at ?? row.createdAt ?? null,
+        };
       }
     } catch (err) {
       console.warn('[UPsert] server endpoint call failed, falling back to client upsert', err);

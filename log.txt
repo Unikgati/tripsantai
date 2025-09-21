@@ -1,0 +1,12 @@
+Request URL
+https://ayotrip-v1.vercel.app/api/upsert-destination
+Request Method
+POST
+Status Code
+500 Internal Server Error
+Remote Address
+216.198.79.195:443
+Referrer Policy
+strict-origin-when-cross-origin
+
+
