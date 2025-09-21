@@ -210,14 +210,6 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
                                 <div className="image-actions" style={{ opacity: 1, gap: '8px' }}>
                                     <button 
                                         type="button" 
-                                        className="image-action-btn"
-                                        title="Ganti Gambar"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        <EditIcon />
-                                    </button>
-                                    <button 
-                                        type="button" 
                                         className="image-action-btn delete"
                                         title="Hapus Gambar"
                                         onClick={handleRemoveImage}
