@@ -153,6 +153,31 @@ export async function upsertDestination(dest: any): Promise<any> {
 }
 
 export async function deleteDestination(id: number): Promise<void> {
+  const isBrowser = typeof window !== 'undefined';
+  if (isBrowser) {
+    try {
+      // Use server endpoint which verifies admin and deletes using service_role key
+      const supabase = getSupabaseClient();
+      let sessionToken = '';
+      try { const { data } = await supabase.auth.getSession(); sessionToken = data?.session?.access_token || ''; } catch (e) { sessionToken = ''; }
+      if (!sessionToken) throw new Error('Missing session token. Please login as admin and refresh the page before deleting.');
+
+      const resp = await fetch('/api/delete-destination', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+        body: JSON.stringify({ id })
+      });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => null);
+        throw new Error(`[Delete] server endpoint failed ${resp.status} ${txt || ''}`);
+      }
+      return;
+    } catch (err) {
+      console.warn('[DELETE] server endpoint call failed, falling back to client delete', err);
+      // Fall through to client delete below
+    }
+  }
+
   const supabase = getSupabaseClient();
   const { error } = await supabase.from('destinations').delete().eq('id', id);
   if (error) throw error;
