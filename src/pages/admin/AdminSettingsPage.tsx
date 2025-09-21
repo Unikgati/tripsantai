@@ -39,7 +39,8 @@ const HeroSlideEditor: React.FC<{
 
         try {
             setSlideUploadProgress(p => ({ ...p, [index]: 0 }));
-            const uploadedUrl = await uploadToCloudinary(file, (pct: number) => setSlideUploadProgress(p => ({ ...p, [index]: pct })));
+            const res = await uploadToCloudinary(file, (pct: number) => setSlideUploadProgress(p => ({ ...p, [index]: pct })));
+            const uploadedUrl = typeof res === 'string' ? res : res.url;
             const updated = [...newSlides];
             updated[index] = { ...updated[index], imageUrl: uploadedUrl };
             onSlidesChange(updated);
@@ -215,7 +216,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
         setLocalSettings(prev => ({ ...prev, [key]: objectUrl }));
         try {
             setUploadProgress(p => ({ ...p, [String(key)]: 0 }));
-            const uploadedUrl = await uploadToCloudinary(file, (pct: number) => setUploadProgress(p => ({ ...p, [String(key)]: pct })));
+            const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(p => ({ ...p, [String(key)]: pct })));
+            const uploadedUrl = typeof res === 'string' ? res : res.url;
             setLocalSettings(prev => ({ ...prev, [key]: uploadedUrl }));
         } catch (err) {
             console.warn('[CLOUDINARY] upload failed for', key, err);

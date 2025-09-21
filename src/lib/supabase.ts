@@ -36,7 +36,9 @@ export async function fetchDestinations(): Promise<SupabaseDestination[]> {
   const mapRow = (row: any) => ({
     ...row,
     imageUrl: row.imageurl ?? row.imageUrl ?? '',
-    galleryImages: row.galleryimages ?? row.galleryImages ?? row.gallery_images ?? null,
+  galleryImages: row.galleryimages ?? row.galleryImages ?? row.gallery_images ?? null,
+  imagePublicId: row.image_public_id ?? row.imagepublicid ?? row.imagepublic_id ?? null,
+  galleryPublicIds: row.gallery_public_ids ?? row.gallerypublicids ?? row.gallery_publicids ?? null,
     longDescription: row.longdescription ?? row.longDescription ?? '',
     priceTiers: row.pricetiers ?? row.priceTiers ?? null,
     minPeople: row.minpeople ?? row.minPeople ?? null,
@@ -118,7 +120,14 @@ export async function upsertDestination(dest: any): Promise<any> {
   Object.keys(dest).forEach(k => {
     // keep the id as 'id' and ensure slug is set below
     const newKey = k === 'id' ? 'id' : k.toLowerCase();
-    payload[newKey] = (dest as any)[k];
+    // map camelCase public id fields to DB column names
+    if (k === 'imagePublicId') {
+      payload['image_public_id'] = (dest as any)[k];
+    } else if (k === 'galleryPublicIds') {
+      payload['gallery_public_ids'] = (dest as any)[k];
+    } else {
+      payload[newKey] = (dest as any)[k];
+    }
   });
   payload.id = idToUse;
   // Ensure slug exists in payload. If missing, generate one from title and id.

@@ -11,6 +11,9 @@ export type Destination = {
   duration: number;
   imageUrl: string;
   galleryImages: string[];
+  // Cloudinary public ids for lifecycle management (nullable for legacy rows)
+  imagePublicId?: string | null;
+  galleryPublicIds?: string[] | null;
   longDescription: string;
   minPeople: number;
   itinerary: { day: number; title: string; description: string; }[];

@@ -3,7 +3,9 @@
  * Requires VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET env variables.
  */
 
-export async function uploadToCloudinary(file: File, onProgress?: (pct: number) => void): Promise<string> {
+export type CloudinaryUploadResult = { url: string; public_id: string };
+
+export async function uploadToCloudinary(file: File, onProgress?: (pct: number) => void): Promise<CloudinaryUploadResult> {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
   if (!cloudName || !uploadPreset) throw new Error('Missing Cloudinary env variables')
@@ -24,7 +26,9 @@ export async function uploadToCloudinary(file: File, onProgress?: (pct: number) 
     xhr.onload = () => {
       try {
         const res = JSON.parse(xhr.responseText)
-        if (res.secure_url) resolve(res.secure_url)
+        // return both secure_url and public_id so server can remove assets later
+        if (res.secure_url && res.public_id) resolve({ url: res.secure_url, public_id: res.public_id })
+        else if (res.secure_url) resolve({ url: res.secure_url, public_id: '' })
         else reject(new Error('Upload failed'))
       } catch (err) {
         reject(err)

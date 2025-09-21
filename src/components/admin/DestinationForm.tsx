@@ -36,10 +36,16 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
         ? destination.galleryImages
         : (destination.imageUrl ? [destination.imageUrl] : []);
     const [imageUrls, setImageUrls] = useState<string[]>(initialImageUrls);
+    // track corresponding Cloudinary public ids for each image (nullable for legacy)
+    const initialPublicIds = destination.galleryPublicIds && destination.galleryPublicIds.length > 0
+        ? destination.galleryPublicIds
+        : (destination.imagePublicId ? [destination.imagePublicId] : []);
     // mark existing images as already uploaded (100)
     const [uploadProgress, setUploadProgress] = useState<number[]>(initialImageUrls.map(() => 100));
     // store original File objects for retry; existing entries are null
     const [uploadFiles, setUploadFiles] = useState<(File | null)[]>(initialImageUrls.map(() => null));
+    // aligned array of public_ids matching imageUrls order
+    const [publicIds, setPublicIds] = useState<(string | null)[]>(initialPublicIds.map(id => id ?? null));
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     // State for category input
@@ -79,6 +85,11 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                         nf.splice(newIndex, 0, file);
                         return nf;
                     });
+                    setPublicIds(prevP => {
+                        const np = [...prevP];
+                        np.splice(newIndex, 0, null);
+                        return np;
+                    });
 
                     // DO NOT auto-upload here; we will upload when the user presses Save
                     return newArr;
@@ -94,6 +105,7 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
     setImageUrls(prev => prev.filter((_, index) => index !== indexToDelete));
     setUploadProgress(prev => prev.filter((_, index) => index !== indexToDelete));
     setUploadFiles(prev => prev.filter((_, index) => index !== indexToDelete));
+    setPublicIds(prev => prev.filter((_, index) => index !== indexToDelete));
     };
 
     const handleSetMainImage = (indexToSet: number) => {
@@ -113,6 +125,11 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
             const item = f.splice(indexToSet, 1);
             return [item[0], ...f];
         });
+        setPublicIds(prev => {
+            const p = [...prev];
+            const item = p.splice(indexToSet, 1);
+            return [item[0], ...p];
+        });
     };
 
     const retryUpload = async (index: number) => {
@@ -124,7 +141,7 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
             return np;
         });
         try {
-            const uploadedUrl = await uploadToCloudinary(file, (pct: number) => {
+            const res = await uploadToCloudinary(file, (pct: number) => {
                 setUploadProgress(prev => {
                     const np = [...prev];
                     np[index] = pct;
@@ -133,7 +150,12 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
             });
             setImageUrls(prev => {
                 const arr = [...prev];
-                arr[index] = uploadedUrl;
+                arr[index] = res.url;
+                return arr;
+            });
+            setPublicIds(prev => {
+                const arr = [...prev];
+                arr[index] = res.public_id || null;
                 return arr;
             });
             setUploadFiles(prev => {
@@ -329,12 +351,14 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                         setUploadProgress(prev => {
                             const np = [...prev]; np[i] = 0; return np;
                         });
-                        const uploadedUrl = await uploadToCloudinary(file, (pct: number) => {
+                        const res = await uploadToCloudinary(file, (pct: number) => {
                             setUploadProgress(prev => {
                                 const np = [...prev]; np[i] = pct; return np;
                             });
                         });
-                        finalImageUrls[i] = uploadedUrl;
+                        finalImageUrls[i] = res.url;
+                        // store public id
+                        setPublicIds(prev => { const np = [...prev]; np[i] = res.public_id || null; return np; });
                         // mark file as uploaded
                         setUploadFiles(prevF => { const nf = [...prevF]; nf[i] = null; return nf; });
                         setUploadProgress(prev => { const np = [...prev]; np[i] = 100; return np; });
@@ -349,6 +373,9 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 slug: slugValue,
                 imageUrl: finalImageUrls[0] || '',
                 galleryImages: finalImageUrls,
+                // include public id fields so server can persist them for deletion later
+                imagePublicId: publicIds && publicIds[0] ? publicIds[0] : null,
+                galleryPublicIds: publicIds && publicIds.length > 0 ? publicIds : [],
                 // ensure numeric fields are numbers
                 duration: Number(formData.duration) || 0,
                 minPeople: Number(formData.minPeople) || 0,

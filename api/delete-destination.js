@@ -52,6 +52,51 @@ export default async function handler(req, res) {
   // Accept id === 0 as a valid id (frontend historically used id=0 for some rows)
   if (id === undefined || id === null) return res.status(400).json({ error: 'Missing id' });
 
+    // Before deleting the DB row, fetch the row to collect Cloudinary public_ids
+    const fetchResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations?id=eq.${encodeURIComponent(id)}&select=id,image_public_id,gallery_public_ids`, {
+      method: 'GET',
+      headers: {
+        'apikey': SERVICE_ROLE_KEY,
+        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!fetchResp.ok) {
+      const txt = await fetchResp.text().catch(() => '<no body>');
+      console.error('delete-destination: PostgREST fetch failed', fetchResp.status, txt);
+      return res.status(fetchResp.status || 500).json({ error: 'Failed to fetch destination', status: fetchResp.status, detail: txt });
+    }
+
+    const rows = await fetchResp.json();
+    const destRow = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+
+    // If we have cloudinary keys in env, attempt to remove assets
+    if (destRow && (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)) {
+      try {
+        const cloudinary = require('cloudinary').v2;
+        cloudinary.config({
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+          api_key: process.env.CLOUDINARY_API_KEY,
+          api_secret: process.env.CLOUDINARY_API_SECRET,
+        });
+
+        const toDelete = [];
+        if (destRow.image_public_id) toDelete.push(destRow.image_public_id);
+        if (Array.isArray(destRow.gallery_public_ids)) toDelete.push(...destRow.gallery_public_ids);
+
+        for (const pid of toDelete) {
+          try {
+            await cloudinary.uploader.destroy(pid, { invalidate: true });
+          } catch (e) {
+            console.warn('Cloudinary delete failed for', pid, e && e.message ? e.message : e);
+          }
+        }
+      } catch (e) {
+        console.warn('Cloudinary removal failed (skipping)', e && e.message ? e.message : e);
+      }
+    }
+
     // perform delete using service role
     const deleteResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations?id=eq.${encodeURIComponent(id)}`, {
       method: 'DELETE',

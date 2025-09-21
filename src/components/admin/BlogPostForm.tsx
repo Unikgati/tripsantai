@@ -39,7 +39,8 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
             // start upload
             (async () => {
                 try {
-                    const uploadedUrl = await uploadToCloudinary(file, (pct: number) => setUploadProgress(pct));
+                    const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(pct));
+                    const uploadedUrl = typeof res === 'string' ? res : res.url;
                     setFormData(prev => ({ ...prev, imageUrl: uploadedUrl }));
                     setUploadFile(null);
                     setUploadProgress(100);
@@ -55,7 +56,8 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
         if (!uploadFile) return;
         setUploadProgress(0);
         try {
-            const uploadedUrl = await uploadToCloudinary(uploadFile, (pct: number) => setUploadProgress(pct));
+            const res = await uploadToCloudinary(uploadFile, (pct: number) => setUploadProgress(pct));
+            const uploadedUrl = typeof res === 'string' ? res : res.url;
             setFormData(prev => ({ ...prev, imageUrl: uploadedUrl }));
             setUploadFile(null);
             setUploadProgress(100);
