@@ -72,16 +72,13 @@ export default async function handler(req, res) {
     const payload = req.body;
     if (!payload || typeof payload !== 'object') return res.status(400).json({ error: 'Invalid payload' });
 
-    // Minimal allowed fields; map camelCase keys to DB column names (lowercased)
-    // Only include columns that exist in the `public.destinations` schema.
-    const allowed = [
-      'id','title','slug','longDescription','imageUrl','galleryImages',
-      'priceTiers','duration','minPeople','itinerary','facilities','categories','mapCoordinates'
-    ];
+    // --- build safe payload for PostgREST ---
     const keyMap = {
+      // frontend -> db column
       id: 'id',
       title: 'title',
       slug: 'slug',
+      shortDescription: 'shortdescription',
       longDescription: 'longdescription',
       imageUrl: 'imageurl',
       galleryImages: 'galleryimages',
@@ -93,25 +90,28 @@ export default async function handler(req, res) {
       categories: 'categories',
       mapCoordinates: 'mapcoordinates'
     };
+
     const safePayload = {};
-    for (const k of allowed) {
-      if (k in payload) {
-        const col = keyMap[k] || k.toLowerCase();
-        safePayload[col] = payload[k];
-      }
+    // Accept both camelCase keys and already-lowercased DB keys
+    for (const srcKey of Object.keys(payload)) {
+      const normalized = keyMap[srcKey] || srcKey.toLowerCase();
+      safePayload[normalized] = payload[srcKey];
     }
+
+    // generate slug if missing
+    if (!safePayload.slug && safePayload.title) {
+      safePayload.slug = String(safePayload.title).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
     // Ensure primary key `id` exists; if not, generate a bigint-ish id using timestamp
     if (!('id' in safePayload) || safePayload.id == null) {
       const genId = Date.now();
-      // Ensure integer (bigint) by using timestamp and a random suffix
       safePayload.id = Math.floor(genId * 1000 + Math.floor(Math.random() * 1000));
     }
 
-    // 4) Perform upsert via PostgREST (REST) using service role
     // Convert JS arrays for Postgres text[] columns into Postgres array literal strings
     const toPgArrayLiteral = (arr) => {
       if (!Array.isArray(arr)) return arr;
-      // escape double quotes and backslashes
       const escaped = arr.map(v => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"'));
       return `{${escaped.join(',')}}`;
     };
@@ -121,6 +121,20 @@ export default async function handler(req, res) {
     if ('categories' in safePayload && Array.isArray(safePayload.categories)) {
       safePayload.categories = toPgArrayLiteral(safePayload.categories);
     }
+
+    // Ensure JSONB fields are valid JSON structures (pricetiers, itinerary, galleryimages, mapcoordinates)
+    const ensureJson = (k) => {
+      if (!(k in safePayload)) return;
+      try {
+        // leave arrays/objects as-is; PostgREST will accept them for JSONB
+        if (typeof safePayload[k] === 'string') {
+          safePayload[k] = JSON.parse(safePayload[k]);
+        }
+      } catch (e) {
+        // ignore parse error; assume caller sent a JS object already
+      }
+    };
+    ['pricetiers','itinerary','galleryimages','mapcoordinates'].forEach(ensureJson);
 
     const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations`, {
       method: 'POST',
