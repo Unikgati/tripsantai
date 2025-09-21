@@ -1,33 +1,26 @@
-index-DAIEFU3P.js:92 
- [SUPABASE] failed to insert order, keeping local state 
-{code: '42501', details: null, hint: null, message: 'new row violates row-level security policy for table "orders"'}
-code
-: 
-"42501"
-details
-: 
-null
-hint
-: 
-null
-message
-: 
-"new row violates row-level security policy for table \"orders\""
-[[Prototype]]
-: 
-Object
-(anonymous)	@	index-DAIEFU3P.js:92
-await in (anonymous)		
-Y	@	index-DAIEFU3P.js:92
-ft	@	index-DAIEFU3P.js:91
-Wt	@	index-DAIEFU3P.js:37
-Xt	@	index-DAIEFU3P.js:37
-Us	@	index-DAIEFU3P.js:37
-yc	@	index-DAIEFU3P.js:37
-wc	@	index-DAIEFU3P.js:37
-(anonymous)	@	index-DAIEFU3P.js:37
-Ol	@	index-DAIEFU3P.js:40
-Hr	@	index-DAIEFU3P.js:37
-Oa	@	index-DAIEFU3P.js:37
-pa	@	index-DAIEFU3P.js:37
-lp	@	index-DAIEFU3P.js:37
+index-DAIEFU3P.js:89   POST https://pgtpbwlehkibihrnnzym.supabase.co/rest/v1/orders?select=* 401 (Unauthorized)
+(anonymous) @ index-DAIEFU3P.js:89
+(anonymous) @ index-DAIEFU3P.js:89
+p @ index-DAIEFU3P.js:89
+Promise.then
+v @ index-DAIEFU3P.js:89
+(anonymous) @ index-DAIEFU3P.js:89
+Yv @ index-DAIEFU3P.js:89
+(anonymous) @ index-DAIEFU3P.js:89
+then @ index-DAIEFU3P.js:67
+index-DAIEFU3P.js:92  [SUPABASE] failed to insert order, keeping local state {code: '42501', details: null, hint: null, message: 'new row violates row-level security policy for table "orders"'}code: "42501"details: nullhint: nullmessage: "new row violates row-level security policy for table \"orders\""[[Prototype]]: Object
+(anonymous) @ index-DAIEFU3P.js:92
+await in (anonymous)
+Y @ index-DAIEFU3P.js:92
+ft @ index-DAIEFU3P.js:91
+Wt @ index-DAIEFU3P.js:37
+Xt @ index-DAIEFU3P.js:37
+Us @ index-DAIEFU3P.js:37
+yc @ index-DAIEFU3P.js:37
+wc @ index-DAIEFU3P.js:37
+(anonymous) @ index-DAIEFU3P.js:37
+Ol @ index-DAIEFU3P.js:40
+Hr @ index-DAIEFU3P.js:37
+Oa @ index-DAIEFU3P.js:37
+pa @ index-DAIEFU3P.js:37
+lp @ index-DAIEFU3P.js:37

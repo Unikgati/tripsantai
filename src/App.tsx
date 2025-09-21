@@ -512,15 +512,57 @@ const App = () => {
     // Optimistically add to local state first so UI responds immediately
     setOrders(prev => [newOrder, ...prev]);
 
-    if (!useSupabase) return;
-
-    // Persist to Supabase in background; on error, keep local state but log warning
+    // Try persisting via serverless endpoint which uses SERVICE_ROLE_KEY (no client auth needed).
+    // Fall back to client-side insertOrder if endpoint unavailable.
     (async () => {
       try {
-        await insertOrder(newOrder);
-  // debug log removed in production build
+        const resp = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: newOrder.customerName,
+            customerPhone: newOrder.customerPhone,
+            destinationId: newOrder.destinationId,
+            destinationTitle: newOrder.destinationTitle,
+            participants: newOrder.participants,
+            departureDate: newOrder.departureDate,
+            totalPrice: newOrder.totalPrice,
+            notes: null,
+          })
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => null);
+          console.warn('[CREATE_ORDER] server endpoint failed', resp.status, text);
+          // fallback: try client-side insert if Supabase anon is configured
+          if (useSupabase) {
+            try { await insertOrder(newOrder); } catch (e) { console.warn('[SUPABASE] fallback insertOrder failed', e); }
+          }
+          return;
+        }
+
+        const json = await resp.json();
+        const saved = json?.data ?? null;
+        if (saved) {
+          // Replace optimistic order with persisted row (map DB fields to app shape)
+          setOrders(prev => prev.map(o => o.id === newOrder.id ? ({
+            id: saved.id ?? newOrder.id,
+            customerName: saved.customer_name ?? saved.customerName ?? newOrder.customerName,
+            customerPhone: saved.customer_phone ?? saved.customerPhone ?? newOrder.customerPhone,
+            participants: saved.participants ?? newOrder.participants,
+            destinationId: saved.destination_id ?? newOrder.destinationId,
+            destinationTitle: saved.destination_title ?? newOrder.destinationTitle,
+            orderDate: saved.order_date ?? newOrder.orderDate,
+            departureDate: saved.departure_date ?? newOrder.departureDate,
+            status: saved.status ?? newOrder.status,
+            totalPrice: saved.total_price ?? newOrder.totalPrice,
+          } as Order) : o));
+        }
       } catch (err) {
-        console.warn('[SUPABASE] failed to insert order, keeping local state', err);
+        console.warn('[CREATE_ORDER] endpoint call failed, falling back to insertOrder', err);
+        if (useSupabase) {
+          try { await insertOrder(newOrder); } catch (e) { console.warn('[SUPABASE] fallback insertOrder failed', e); }
+        }
       }
     })();
   };
