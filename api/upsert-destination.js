@@ -138,20 +138,15 @@ export default async function handler(req, res) {
         const u = new URL(url);
         // typical Cloudinary URL: /<cloud>/image/upload/v123456/.../public_id.ext
         const parts = u.pathname.split('/');
-        // find 'upload' segment
         const uploadIndex = parts.findIndex(p => p === 'upload');
         if (uploadIndex === -1) return null;
-        // public id is the remainder after optional version segment(s)
         const remainder = parts.slice(uploadIndex + 1).join('/');
         if (!remainder) return null;
-        // remove version prefix like v123456 if present
+        // remove version prefix like v123456/ if present
         const withoutVersion = remainder.replace(/^v\d+\//, '');
-        // strip file extension
-        const lastSlash = withoutVersion.lastIndexOf('/');
-        const filename = lastSlash === -1 ? withoutVersion : withoutVersion.slice(lastSlash + 1);
-        const dot = filename.lastIndexOf('.');
-        const publicId = dot === -1 ? filename : filename.slice(0, dot);
-        return publicId || null;
+        // Keep full path (including folders) but strip file extension
+        const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
+        return publicIdWithPath || null;
       } catch (e) {
         return null;
       }

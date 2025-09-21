@@ -81,13 +81,16 @@ export default async function handler(req, res) {
           api_secret: process.env.CLOUDINARY_API_SECRET,
         });
 
-        const toDelete = [];
+        let toDelete = [];
         if (destRow.image_public_id) toDelete.push(destRow.image_public_id);
         if (Array.isArray(destRow.gallery_public_ids)) toDelete.push(...destRow.gallery_public_ids);
+        // filter falsy/empty values
+        toDelete = toDelete.filter(Boolean);
 
         for (const pid of toDelete) {
           try {
-            await cloudinary.uploader.destroy(pid, { invalidate: true });
+            const result = await cloudinary.uploader.destroy(pid, { invalidate: true });
+            console.log('Cloudinary delete result for', pid, result && result.result ? result.result : result);
           } catch (e) {
             console.warn('Cloudinary delete failed for', pid, e && e.message ? e.message : e);
           }
