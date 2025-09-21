@@ -1037,6 +1037,19 @@ body.dark .wishlist-btn:hover {
     color: var(--text-secondary);
 }
 
+/* Improve spacing for rich itinerary descriptions injected as HTML */
+.itinerary-description {
+    /* Slightly larger left padding on wider screens for better visual separation */
+    padding-left: 1rem;
+}
+
+/* Responsive: reduce left padding on small/mobile screens so layout stays compact */
+@media (max-width: 640px) {
+    .itinerary-description {
+        padding-left: 0.5rem;
+    }
+}
+
 /* Destination Detail Tabs */
 .destination-tabs {
     margin-bottom: 2rem;

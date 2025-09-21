@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { Destination, Page } from '../types';
 import { ClockIcon, UsersIcon, CameraIcon, MapPinIcon, CheckCircleIcon } from '../components/Icons';
 import { FacilitiesList } from '../components/FacilitiesList';
@@ -49,10 +50,11 @@ export const DestinationDetailPage: React.FC<DestinationDetailPageProps> = ({ de
                             {(destination.itinerary ?? []).map(item => (
                                 <div key={item.day} className="itinerary-item">
                                     <div className="itinerary-day-marker">Hari {item.day}</div>
-                                    <div className="itinerary-content">
-                                        <h4>{item.title}</h4>
-                                        <p>{item.description}</p>
-                                    </div>
+                                        <div className="itinerary-content">
+                                            <h4>{item.title}</h4>
+                                            {/* Render rich text from editor: sanitize before injecting as HTML */}
+                                            <div className="itinerary-description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.description || '') }} />
+                                        </div>
                                 </div>
                             ))}
                         </div>
