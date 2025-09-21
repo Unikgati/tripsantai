@@ -145,7 +145,8 @@ export default async function handler(req, res) {
         'apikey': SERVICE_ROLE_KEY,
         'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
+        // Use PostgREST resolution=merge-duplicates so POST with on_conflict performs upsert
+        'Prefer': 'return=representation,resolution=merge-duplicates'
       },
       body: JSON.stringify([safePayload])
     });
