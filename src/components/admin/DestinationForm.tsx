@@ -104,10 +104,36 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
     };
 
     const handleDeleteImage = (indexToDelete: number) => {
-    // If the image being removed has an existing Cloudinary public_id, record it
+    // If the image being removed has an existing Cloudinary public_id, record it.
+    // If public_id is missing, try to derive it from the image URL so we still
+    // request Cloudinary removal for previously-uploaded images.
+    const deriveFromUrl = (url: string | undefined | null) => {
+        if (!url) return null;
+        try {
+            const u = new URL(url);
+            const parts = u.pathname.split('/');
+            const uploadIndex = parts.findIndex(p => p === 'upload');
+            if (uploadIndex === -1) return null;
+            const remainder = parts.slice(uploadIndex + 1).join('/');
+            if (!remainder) return null;
+            const withoutVersion = remainder.replace(/^v\d+\//, '');
+            const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
+            return publicIdWithPath || null;
+        } catch (e) {
+            return null;
+        }
+    };
+
     setPublicIds(prevP => {
         const pid = prevP[indexToDelete];
-        if (pid) setRemovedPublicIds(prev => [...prev, pid]);
+        if (pid) {
+            setRemovedPublicIds(prev => [...prev, pid]);
+        } else {
+            // fallback: try derive from current imageUrls snapshot
+            const url = imageUrls[indexToDelete];
+            const derived = deriveFromUrl(url);
+            if (derived) setRemovedPublicIds(prev => [...prev, derived]);
+        }
         return prevP.filter((_, index) => index !== indexToDelete);
     });
     setImageUrls(prev => prev.filter((_, index) => index !== indexToDelete));
@@ -399,6 +425,8 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 categories: formData.categories || [],
                 mapCoordinates: formData.mapCoordinates || null,
             };
+            // Debug: log removedPublicIds so we can trace deletion requests
+            try { console.debug('Submitting removed_public_ids:', removedPublicIds); } catch (e) {}
             try {
                 await onSave(finalData);
             } catch (err: any) {
