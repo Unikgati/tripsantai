@@ -195,6 +195,11 @@ export default async function handler(req, res) {
       }
     }
 
+    // Remove transient field so PostgREST won't attempt to write a non-existent column
+    if ('removed_public_ids' in safePayload) {
+      try { delete safePayload.removed_public_ids; } catch (e) {}
+    }
+
     // Ensure JSONB fields are valid JSON structures (pricetiers, itinerary, galleryimages, mapcoordinates)
     const ensureJson = (k) => {
       if (!(k in safePayload)) return;
