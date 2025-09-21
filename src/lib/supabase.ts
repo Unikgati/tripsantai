@@ -210,8 +210,13 @@ export async function upsertBlogPost(post: any): Promise<any> {
   const payload: any = {};
   const idToUse = (post && post.id && post.id !== 0) ? post.id : Date.now();
   Object.keys(post).forEach(k => {
-    const newKey = k === 'id' ? 'id' : k.toLowerCase();
-    payload[newKey] = (post as any)[k];
+    // map camelCase public id field to DB column
+    if (k === 'imagePublicId') {
+      payload['image_public_id'] = (post as any)[k];
+    } else {
+      const newKey = k === 'id' ? 'id' : k.toLowerCase();
+      payload[newKey] = (post as any)[k];
+    }
   });
   payload.id = idToUse;
   // Ensure date and slug
@@ -235,12 +240,36 @@ export async function upsertBlogPost(post: any): Promise<any> {
   if (!row) return null;
   return {
     ...row,
-    imageUrl: row.imageurl ?? row.imageUrl ?? '',
+  imageUrl: row.imageurl ?? row.imageUrl ?? '',
+  imagePublicId: row.image_public_id ?? row.imagepublicid ?? null,
     created_at: row.created_at ?? row.createdAt ?? null,
   };
 }
 
 export async function deleteBlogPost(id: number): Promise<void> {
+  const isBrowser = typeof window !== 'undefined';
+  if (isBrowser) {
+    try {
+      const supabase = getSupabaseClient();
+      let sessionToken = '';
+      try { const { data } = await supabase.auth.getSession(); sessionToken = data?.session?.access_token || ''; } catch (e) { sessionToken = ''; }
+      if (!sessionToken) throw new Error('Missing session token. Please login as admin and refresh the page before deleting.');
+
+      const resp = await fetch('/api/delete-blog-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+        body: JSON.stringify({ id })
+      });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => null);
+        throw new Error(`[Delete] server endpoint failed ${resp.status} ${txt || ''}`);
+      }
+      return;
+    } catch (err) {
+      console.warn('[DELETE] server endpoint call failed, falling back to client delete', err);
+    }
+  }
+
   const supabase = getSupabaseClient();
   const { error } = await supabase.from('blog_posts').delete().eq('id', id);
   if (error) throw error;

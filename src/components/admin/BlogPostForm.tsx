@@ -37,17 +37,18 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
             setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
             setUploadProgress(0);
             // start upload
-            (async () => {
-                try {
-                    const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(pct));
-                    const uploadedUrl = typeof res === 'string' ? res : res.url;
-                    setFormData(prev => ({ ...prev, imageUrl: uploadedUrl }));
-                    setUploadFile(null);
-                    setUploadProgress(100);
-                } catch (err) {
-                    setUploadProgress(-1);
-                }
-            })();
+                    (async () => {
+                        try {
+                            const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(pct));
+                            const uploadedUrl = typeof res === 'string' ? res : res.url;
+                            const publicId = (res && typeof res === 'object') ? (res.public_id || '') : '';
+                            setFormData(prev => ({ ...prev, imageUrl: uploadedUrl, imagePublicId: publicId } as any));
+                            setUploadFile(null);
+                            setUploadProgress(100);
+                        } catch (err) {
+                            setUploadProgress(-1);
+                        }
+                    })();
         };
         reader.readAsDataURL(file);
     };
