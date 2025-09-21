@@ -64,14 +64,14 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
     files.forEach((file: File) => {
             const reader = new FileReader();
             reader.onloadend = () => {
-                // Add preview and a placeholder progress entry, then start upload
+                // Add preview and store the File object for later upload on submit
                 setImageUrls(prev => {
                     const newIndex = prev.length;
                     const newArr = [...prev, reader.result as string];
-                    // insert progress placeholder and store file for retry
+                    // insert placeholder progress (-2 means pending upload)
                     setUploadProgress(prevP => {
                         const np = [...prevP];
-                        np.splice(newIndex, 0, 0);
+                        np.splice(newIndex, 0, -2);
                         return np;
                     });
                     setUploadFiles(prevF => {
@@ -80,41 +80,7 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                         return nf;
                     });
 
-                    // start upload in background
-                    (async () => {
-                        try {
-                            const uploadedUrl = await uploadToCloudinary(file, (pct: number) => {
-                                setUploadProgress(prevP => {
-                                    const np2 = [...prevP];
-                                    np2[newIndex] = pct;
-                                    return np2;
-                                });
-                            });
-                            setImageUrls(prev2 => {
-                                const arr = [...prev2];
-                                arr[newIndex] = uploadedUrl;
-                                return arr;
-                            });
-                            setUploadFiles(prevF => {
-                                const nf = [...prevF];
-                                nf[newIndex] = null;
-                                return nf;
-                            });
-                            setUploadProgress(prevP => {
-                                const np2 = [...prevP];
-                                np2[newIndex] = 100;
-                                return np2;
-                            });
-                        } catch (err) {
-                            // mark as failed
-                            setUploadProgress(prevP => {
-                                const np2 = [...prevP];
-                                np2[newIndex] = -1;
-                                return np2;
-                            });
-                        }
-                    })();
-
+                    // DO NOT auto-upload here; we will upload when the user presses Save
                     return newArr;
                 });
             };
@@ -353,11 +319,36 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 ? formData.slug.trim()
                 : String(formData.title || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+            // If there are pending files, upload them now and replace previews with real URLs
+            const finalImageUrls = [...imageUrls];
+            for (let i = 0; i < uploadFiles.length; i++) {
+                const file = uploadFiles[i];
+                if (file) {
+                    try {
+                        // update progress to 0
+                        setUploadProgress(prev => {
+                            const np = [...prev]; np[i] = 0; return np;
+                        });
+                        const uploadedUrl = await uploadToCloudinary(file, (pct: number) => {
+                            setUploadProgress(prev => {
+                                const np = [...prev]; np[i] = pct; return np;
+                            });
+                        });
+                        finalImageUrls[i] = uploadedUrl;
+                        // mark file as uploaded
+                        setUploadFiles(prevF => { const nf = [...prevF]; nf[i] = null; return nf; });
+                        setUploadProgress(prev => { const np = [...prev]; np[i] = 100; return np; });
+                    } catch (err) {
+                        setUploadProgress(prev => { const np = [...prev]; np[i] = -1; return np; });
+                    }
+                }
+            }
+
             const finalData = {
                 ...formData,
                 slug: slugValue,
-                imageUrl: imageUrls[0] || '',
-                galleryImages: imageUrls,
+                imageUrl: finalImageUrls[0] || '',
+                galleryImages: finalImageUrls,
                 // ensure numeric fields are numbers
                 duration: Number(formData.duration) || 0,
                 minPeople: Number(formData.minPeople) || 0,
