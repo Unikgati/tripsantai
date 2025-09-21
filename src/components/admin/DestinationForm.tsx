@@ -346,24 +346,10 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
         setIsSaving(true);
         // Simulate API Call
         setTimeout(() => {
-            // Build payload with DB-friendly keys (camelCase OK, server maps them)
-            const slugValue = formData.slug && formData.slug.trim() !== ''
-                ? formData.slug.trim()
-                : String(formData.title || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
             const finalData = {
                 ...formData,
-                slug: slugValue,
                 imageUrl: imageUrls[0] || '',
-                galleryImages: imageUrls,
-                // ensure numeric fields are numbers
-                duration: Number(formData.duration) || 0,
-                minPeople: Number(formData.minPeople) || 0,
-                priceTiers: formData.priceTiers || [],
-                itinerary: formData.itinerary || [],
-                facilities: formData.facilities || [],
-                categories: formData.categories || [],
-                mapCoordinates: formData.mapCoordinates || null,
+                galleryImages: imageUrls
             };
             onSave(finalData);
             // No need to set isSaving(false) as the component will unmount
