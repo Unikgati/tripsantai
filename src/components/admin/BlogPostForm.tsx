@@ -16,8 +16,11 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
     const { showToast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // -2 = pending (selected, not uploaded), -1 = failed, 0..100 = progress
     const [uploadProgress, setUploadProgress] = useState<number>(formData.imageUrl ? 100 : -2);
     const [uploadFile, setUploadFile] = useState<File | null>(null);
+    // track Cloudinary public_id for the image (nullable)
+    const [imagePublicId, setImagePublicId] = useState<string | null>((post as any).imagePublicId ?? null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -31,24 +34,14 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || !e.target.files[0]) return;
         const file = e.target.files[0] as File;
+        // Do NOT auto-upload here. Just show preview and store file for upload on submit.
         setUploadFile(file);
         const reader = new FileReader();
         reader.onloadend = () => {
             setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
-            setUploadProgress(0);
-            // start upload
-                    (async () => {
-                        try {
-                            const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(pct));
-                            const uploadedUrl = typeof res === 'string' ? res : res.url;
-                            const publicId = (res && typeof res === 'object') ? (res.public_id || '') : '';
-                            setFormData(prev => ({ ...prev, imageUrl: uploadedUrl, imagePublicId: publicId } as any));
-                            setUploadFile(null);
-                            setUploadProgress(100);
-                        } catch (err) {
-                            setUploadProgress(-1);
-                        }
-                    })();
+            setUploadProgress(-2); // pending
+            // clear any previous public id until we actually upload or save
+            setImagePublicId(null);
         };
         reader.readAsDataURL(file);
     };
@@ -59,7 +52,9 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
         try {
             const res = await uploadToCloudinary(uploadFile, (pct: number) => setUploadProgress(pct));
             const uploadedUrl = typeof res === 'string' ? res : res.url;
+            const publicId = (res && typeof res === 'object') ? (res.public_id || null) : null;
             setFormData(prev => ({ ...prev, imageUrl: uploadedUrl }));
+            setImagePublicId(publicId);
             setUploadFile(null);
             setUploadProgress(100);
         } catch (err) {
@@ -68,7 +63,8 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
     };
 
     const handleRemoveImage = () => {
-        setFormData(prev => ({ ...prev, imageUrl: '' }));
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
+    setImagePublicId(null);
         if(fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -76,16 +72,42 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.imageUrl) {
+        // Ensure there's an image either already uploaded or selected
+        if (!formData.imageUrl && !uploadFile) {
             showToast('Gambar utama wajib diunggah.', 'error');
             return;
         }
         setIsSaving(true);
-        // Simulate API call
-        setTimeout(() => {
-            onSave(formData);
-            // Component unmounts, no need to set isSaving(false)
-        }, 1500);
+
+        (async () => {
+            try {
+                let finalImageUrl = formData.imageUrl || '';
+                let finalPublicId = imagePublicId || (formData as any).imagePublicId || null;
+                // If a new file was selected, upload it now
+                if (uploadFile) {
+                    setUploadProgress(0);
+                    const res = await uploadToCloudinary(uploadFile, (pct: number) => setUploadProgress(pct));
+                    finalImageUrl = typeof res === 'string' ? res : res.url;
+                    finalPublicId = (res && typeof res === 'object') ? (res.public_id || null) : finalPublicId;
+                }
+
+                const finalPost = {
+                    ...formData,
+                    imageUrl: finalImageUrl || '',
+                    imagePublicId: finalPublicId,
+                } as BlogPost & { imagePublicId?: string | null };
+
+                // Simulate short delay for UX parity
+                setTimeout(() => {
+                    onSave(finalPost as BlogPost);
+                    // component likely unmounts; no need to setIsSaving(false)
+                }, 300);
+            } catch (err) {
+                setIsSaving(false);
+                setUploadProgress(-1);
+                showToast('Gagal mengunggah gambar. Silakan coba lagi.', 'error');
+            }
+        })();
     };
 
     const modules = {

@@ -206,6 +206,42 @@ export async function fetchBlogPosts(): Promise<SupabaseBlogPost[]> {
 }
 
 export async function upsertBlogPost(post: any): Promise<any> {
+  // Prefer calling the server-side endpoint from the browser so we can use service_role key
+  const isBrowser = typeof window !== 'undefined';
+  if (isBrowser) {
+    try {
+      const supabase = getSupabaseClient();
+      let sessionToken = '';
+      try { const { data } = await supabase.auth.getSession(); sessionToken = data?.session?.access_token || ''; } catch (e) { sessionToken = ''; }
+      if (!sessionToken) throw new Error('Missing session token. Please login as admin and refresh the page before saving.');
+
+      const resp = await fetch('/api/upsert-blog-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+        body: JSON.stringify(post),
+      });
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => null);
+        const errMsg = `[UPsertBlog] server endpoint failed ${resp.status} ${text || ''}`;
+        console.warn(errMsg);
+        throw new Error(errMsg);
+      }
+      const json = await resp.json();
+      const row = json?.data ?? null;
+      if (row) {
+        return {
+          ...row,
+          imageUrl: row.imageurl ?? row.imageUrl ?? '',
+          imagePublicId: row.image_public_id ?? row.imagepublicid ?? null,
+          created_at: row.created_at ?? row.createdAt ?? null,
+        };
+      }
+    } catch (err) {
+      console.warn('[UPsertBlog] server endpoint call failed, falling back to client upsert', err);
+    }
+    // fall through to client-side upsert as last resort
+  }
+
   const supabase = getSupabaseClient();
   const payload: any = {};
   const idToUse = (post && post.id && post.id !== 0) ? post.id : Date.now();
@@ -240,8 +276,8 @@ export async function upsertBlogPost(post: any): Promise<any> {
   if (!row) return null;
   return {
     ...row,
-  imageUrl: row.imageurl ?? row.imageUrl ?? '',
-  imagePublicId: row.image_public_id ?? row.imagepublicid ?? null,
+    imageUrl: row.imageurl ?? row.imageUrl ?? '',
+    imagePublicId: row.image_public_id ?? row.imagepublicid ?? null,
     created_at: row.created_at ?? row.createdAt ?? null,
   };
 }
