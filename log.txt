@@ -1,0 +1,44 @@
+:authority
+ayotrip.vercel.app
+:method
+POST
+:path
+/api/upsert-destination
+:scheme
+https
+accept
+*/*
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+en-US,en;q=0.9
+authorization
+Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6Ii9KQm1GUWNDSDhzNHFaaUsiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3BndHBid2xlaGtpYmlocm5uenltLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI2YWM5NzhiNi1mMGNkLTRhODMtYjhhNC03ZTYxYTlmMjA2MWIiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU4NDE5NDE5LCJpYXQiOjE3NTg0MTU4MTksImVtYWlsIjoiYWRtaW5AYXlvdHJpcC5teS5pZCIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzU4MzU3OTk3fV0sInNlc3Npb25faWQiOiIyZTk5NTIyZC01NDcyLTRkZWItYTY2ZC1lYTE0MjdiMWIwMDgiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.pSNk3C413Gk8IWkaa402dhfaen7sCz24VN7SQFKAJok
+cache-control
+no-cache
+content-length
+278
+content-type
+application/json
+origin
+https://ayotrip.vercel.app
+pragma
+no-cache
+priority
+u=1, i
+referer
+https://ayotrip.vercel.app/admin/destinations
+sec-ch-ua
+"Chromium";v="140", "Not=A?Brand";v="24", "Microsoft Edge";v="140"
+sec-ch-ua-mobile
+?0
+sec-ch-ua-platform
+"macOS"
+sec-fetch-dest
+empty
+sec-fetch-mode
+cors
+sec-fetch-site
+same-origin
+user-agent
+Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0

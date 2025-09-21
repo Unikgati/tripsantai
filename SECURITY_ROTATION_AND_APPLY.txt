@@ -1,0 +1,30 @@
+SECURITY ROTATION AND APPLY INSTRUCTIONS
+
+1) DO NOT commit secrets to repo. Remove any files like `kredensial.txt` from repository and history (git rm --cached, then rotate keys).
+
+2) Rotate Supabase keys:
+   - In Supabase dashboard > Settings > API, rotate the anon and service_role keys if they have been exposed.
+   - Update environment secrets in your hosting provider (Vercel/GitHub Actions/Netlify) with new keys; never place service_role in client env.
+
+3) Rotate Cloudinary keys:
+   - In Cloudinary console, rotate API secret and create a new upload preset. Use unsigned preset only for limited client uploads.
+
+4) Apply SQL (two options):
+   Option A: Supabase SQL Editor (recommended for quick restore)
+     - Open your Supabase project > SQL Editor > New Query
+     - Paste `db/schema_restore.sql` and run
+     - Paste `db/rls.sql` and run (carefully review policies)
+
+   Option B: psql / CLI
+     - Install psql and connect using provided connection string
+     - Run: psql "postgresql://<user>:<password>@<host>:5432/<db>" -f db/schema_restore.sql
+     - Then: psql ... -f db/rls.sql
+
+5) Verify:
+   - Check tables in Supabase Table Editor
+   - Test a safe SELECT on `destinations` and `blog_posts`
+   - Try admin-only operation (should fail without admin claim) and test server-side endpoint with service_role key (should succeed)
+
+6) If you accidentally committed credentials to git, purge them with BFG or git filter-repo and rotate keys immediately.
+
+7) After rotation, delete `kredensial.txt` from the workspace and ensure no secrets remain in code or committed files.
