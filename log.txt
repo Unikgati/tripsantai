@@ -1,12 +1,44 @@
-Request URL
-https://ayotrip-v1.vercel.app/api/upsert-destination
-Request Method
-POST
-Status Code
-500 Internal Server Error
-Remote Address
-216.198.79.195:443
-Referrer Policy
-strict-origin-when-cross-origin
-
-
+TypeError: Cannot read properties of null (reading 'length')
+    at co (AdminLayout-CZTM9TKn.js:41:73873)
+    at ha (index-R3zcZXTJ.js:38:17235)
+    at gd (index-R3zcZXTJ.js:40:44318)
+    at hd (index-R3zcZXTJ.js:40:39983)
+    at Mp (index-R3zcZXTJ.js:40:39911)
+    at Ls (index-R3zcZXTJ.js:40:39764)
+    at $a (index-R3zcZXTJ.js:40:36091)
+    at ud (index-R3zcZXTJ.js:40:36903)
+    at pn (index-R3zcZXTJ.js:38:3273)
+    at index-R3zcZXTJ.js:40:34402
+ka	@	index-R3zcZXTJ.js:40
+Ic.r.callback	@	index-R3zcZXTJ.js:40
+oc	@	index-R3zcZXTJ.js:38
+sd	@	index-R3zcZXTJ.js:40
+id	@	index-R3zcZXTJ.js:40
+Up	@	index-R3zcZXTJ.js:40
+Fp	@	index-R3zcZXTJ.js:40
+Wn	@	index-R3zcZXTJ.js:40
+ud	@	index-R3zcZXTJ.js:40
+pn	@	index-R3zcZXTJ.js:38
+(anonymous)	@	index-R3zcZXTJ.js:40
+index-R3zcZXTJ.js:38 
+ Uncaught TypeError: Cannot read properties of null (reading 'length')
+    at co (AdminLayout-CZTM9TKn.js:41:73873)
+    at ha (index-R3zcZXTJ.js:38:17235)
+    at gd (index-R3zcZXTJ.js:40:44318)
+    at hd (index-R3zcZXTJ.js:40:39983)
+    at Mp (index-R3zcZXTJ.js:40:39911)
+    at Ls (index-R3zcZXTJ.js:40:39764)
+    at $a (index-R3zcZXTJ.js:40:36091)
+    at ud (index-R3zcZXTJ.js:40:36903)
+    at pn (index-R3zcZXTJ.js:38:3273)
+    at index-R3zcZXTJ.js:40:34402
+co	@	AdminLayout-CZTM9TKn.js:41
+ha	@	index-R3zcZXTJ.js:38
+gd	@	index-R3zcZXTJ.js:40
+hd	@	index-R3zcZXTJ.js:40
+Mp	@	index-R3zcZXTJ.js:40
+Ls	@	index-R3zcZXTJ.js:40
+$a	@	index-R3zcZXTJ.js:40
+ud	@	index-R3zcZXTJ.js:40
+pn	@	index-R3zcZXTJ.js:38
+(anonymous)	@	index-R3zcZXTJ.js:40

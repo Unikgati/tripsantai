@@ -1050,6 +1050,41 @@ body.dark .wishlist-btn:hover {
     }
 }
 
+/* Ensure rich text injected into itinerary-description inherits app colors and has consistent list styling */
+.itinerary-description {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.itinerary-description p {
+    margin: 0 0 0.5rem 0;
+}
+
+.itinerary-description ul,
+.itinerary-description ol {
+    margin: 0 0 0.75rem 1.25rem; /* space above/below, indent from content */
+    padding-left: 1.1rem;
+    list-style-position: outside;
+}
+
+.itinerary-description li {
+    margin-bottom: 0.5rem;
+}
+
+/* Make sure bullet markers use the same color as the text */
+.itinerary-description li::marker {
+    color: currentColor;
+}
+
+@media (max-width: 640px) {
+    .itinerary-description ul,
+    .itinerary-description ol {
+        margin-left: 0.9rem;
+        padding-left: 0.9rem;
+    }
+}
+
 /* Destination Detail Tabs */
 .destination-tabs {
     margin-bottom: 2rem;
