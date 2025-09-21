@@ -59,6 +59,34 @@ export default async function handler(req, res) {
     // generate slug if missing
     if (!safePayload.slug && safePayload.title) safePayload.slug = String(safePayload.title).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+    // Attempt Cloudinary deletions if client requested removed_public_ids
+    if (Array.isArray(payload.removed_public_ids) && payload.removed_public_ids.length > 0) {
+      const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
+      if (CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        try {
+          const { v2: cloudinary } = await import('cloudinary').catch(err => { throw err; });
+          cloudinary.config({ cloud_name: CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
+          for (const pid of payload.removed_public_ids) {
+            try {
+              const result = await cloudinary.uploader.destroy(pid, { invalidate: true });
+              console.info('cloudinary destroy', pid, result && result.result ? result.result : result);
+            } catch (e) {
+              console.warn('cloudinary destroy failed for', pid, e && e.message ? e.message : e);
+            }
+          }
+        } catch (e) {
+          console.warn('Cloudinary removal failed (skipping)', e && e.message ? e.message : e);
+        }
+      } else {
+        console.info('Skipping Cloudinary removal: credentials not configured');
+      }
+    }
+
+    // Remove transient field so PostgREST won't attempt to write a non-existent column
+    if ('removed_public_ids' in safePayload) {
+      try { delete safePayload.removed_public_ids; } catch (e) {}
+    }
+
     const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?on_conflict=id`, {
       method: 'POST',
       headers: {
