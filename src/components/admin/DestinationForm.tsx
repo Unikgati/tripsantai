@@ -388,6 +388,8 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 // include public id fields so server can persist them for deletion later (use localPublicIds)
                 imagePublicId: localPublicIds && localPublicIds[0] ? localPublicIds[0] : null,
                 galleryPublicIds: localPublicIds && localPublicIds.length > 0 ? localPublicIds : [],
+                // tell server which Cloudinary public_ids were removed by the user so it can delete them
+                removed_public_ids: removedPublicIds,
                 // ensure numeric fields are numbers
                 duration: Number(formData.duration) || 0,
                 minPeople: Number(formData.minPeople) || 0,
