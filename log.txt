@@ -1,99 +1,76 @@
-index-BzKbMjVF.js:91   POST https://ayotrip-v1.vercel.app/api/upsert-destination 400 (Bad Request)
-n0 @ index-BzKbMjVF.js:91
-await in n0
-Oe @ index-BzKbMjVF.js:92
-r @ AdminLayout-C_XSEean.js:41
-(anonymous) @ AdminLayout-C_XSEean.js:41
-setTimeout
-ne @ AdminLayout-C_XSEean.js:41
-Wt @ index-BzKbMjVF.js:37
-Xt @ index-BzKbMjVF.js:37
-Us @ index-BzKbMjVF.js:37
-yc @ index-BzKbMjVF.js:37
-wc @ index-BzKbMjVF.js:37
-(anonymous) @ index-BzKbMjVF.js:37
-Ol @ index-BzKbMjVF.js:40
-Hr @ index-BzKbMjVF.js:37
-Oa @ index-BzKbMjVF.js:37
-pa @ index-BzKbMjVF.js:37
-lp @ index-BzKbMjVF.js:37
-index-BzKbMjVF.js:91  [UPsert] server endpoint failed 400 {"error":"Upsert failed","status":400,"detail":"{\"code\":\"PGRST204\",\"details\":null,\"hint\":null,\"message\":\"Could not find the 'gallerypublicids' column of 'destinations' in the schema cache\"}"}
-n0 @ index-BzKbMjVF.js:91
-await in n0
-Oe @ index-BzKbMjVF.js:92
-r @ AdminLayout-C_XSEean.js:41
-(anonymous) @ AdminLayout-C_XSEean.js:41
-setTimeout
-ne @ AdminLayout-C_XSEean.js:41
-Wt @ index-BzKbMjVF.js:37
-Xt @ index-BzKbMjVF.js:37
-Us @ index-BzKbMjVF.js:37
-yc @ index-BzKbMjVF.js:37
-wc @ index-BzKbMjVF.js:37
-(anonymous) @ index-BzKbMjVF.js:37
-Ol @ index-BzKbMjVF.js:40
-Hr @ index-BzKbMjVF.js:37
-Oa @ index-BzKbMjVF.js:37
-pa @ index-BzKbMjVF.js:37
-lp @ index-BzKbMjVF.js:37
-index-BzKbMjVF.js:91  [UPsert] server endpoint call failed, falling back to client upsert Error: [UPsert] server endpoint failed 400 {"error":"Upsert failed","status":400,"detail":"{\"code\":\"PGRST204\",\"details\":null,\"hint\":null,\"message\":\"Could not find the 'gallerypublicids' column of 'destinations' in the schema cache\"}"}
-    at n0 (index-BzKbMjVF.js:91:35758)
-    at async Oe (index-BzKbMjVF.js:92:22933)
-    at async r (AdminLayout-C_XSEean.js:41:88016)
-    at async AdminLayout-C_XSEean.js:41:78445
-n0 @ index-BzKbMjVF.js:91
-await in n0
-Oe @ index-BzKbMjVF.js:92
-r @ AdminLayout-C_XSEean.js:41
-(anonymous) @ AdminLayout-C_XSEean.js:41
-setTimeout
-ne @ AdminLayout-C_XSEean.js:41
-Wt @ index-BzKbMjVF.js:37
-Xt @ index-BzKbMjVF.js:37
-Us @ index-BzKbMjVF.js:37
-yc @ index-BzKbMjVF.js:37
-wc @ index-BzKbMjVF.js:37
-(anonymous) @ index-BzKbMjVF.js:37
-Ol @ index-BzKbMjVF.js:40
-Hr @ index-BzKbMjVF.js:37
-Oa @ index-BzKbMjVF.js:37
-pa @ index-BzKbMjVF.js:37
-lp @ index-BzKbMjVF.js:37
-[NEW] Explain Console errors by using Copilot in Edge: click
-         
-         to explain an error. 
-        Learn more
-        Don't show again
-index-BzKbMjVF.js:89   POST https://pgtpbwlehkibihrnnzym.supabase.co/rest/v1/destinations?on_conflict=id&select=* 403 (Forbidden)
-(anonymous) @ index-BzKbMjVF.js:89
-(anonymous) @ index-BzKbMjVF.js:89
-p @ index-BzKbMjVF.js:89
-Promise.then
-v @ index-BzKbMjVF.js:89
-(anonymous) @ index-BzKbMjVF.js:89
-Yv @ index-BzKbMjVF.js:89
-(anonymous) @ index-BzKbMjVF.js:89
-then @ index-BzKbMjVF.js:67
-index-BzKbMjVF.js:92  Failed to save destination to Supabase, falling back to local state {code: '42501', details: null, hint: null, message: 'new row violates row-level security policy for table "destinations"'}
-Oe @ index-BzKbMjVF.js:92
-await in Oe
-r @ AdminLayout-C_XSEean.js:41
-(anonymous) @ AdminLayout-C_XSEean.js:41
-setTimeout
-ne @ AdminLayout-C_XSEean.js:41
-Wt @ index-BzKbMjVF.js:37
-Xt @ index-BzKbMjVF.js:37
-Us @ index-BzKbMjVF.js:37
-yc @ index-BzKbMjVF.js:37
-wc @ index-BzKbMjVF.js:37
-(anonymous) @ index-BzKbMjVF.js:37
-Ol @ index-BzKbMjVF.js:40
-Hr @ index-BzKbMjVF.js:37
-Oa @ index-BzKbMjVF.js:37
-pa @ index-BzKbMjVF.js:37
-lp @ index-BzKbMjVF.js:37
-AdminLayout-C_XSEean.js:41  Save destination failed {code: '42501', details: null, hint: null, message: 'new row violates row-level security policy for table "destinations"'}
+UPsertBlog] server endpoint call failed, falling back to client upsert Error: [UPsertBlog] server endpoint failed 400 {"error":"Upsert failed","status":400,"detail":"{\"code\":\"PGRST204\",\"details\":null,\"hint\":null,\"message\":\"Could not find the 'image_public_id' column of 'blog_posts' in the schema cache\"}"}
+    at i0 (index-CXWBURLA.js:91:38909)
+    at async K (index-CXWBURLA.js:92:23440)
+i0	@	index-CXWBURLA.js:91
+await in i0		
+K	@	index-CXWBURLA.js:92
+o	@	AdminLayout-CCW6zC0n.js:41
+(anonymous)	@	AdminLayout-CCW6zC0n.js:41
+setTimeout		
+(anonymous)	@	AdminLayout-CCW6zC0n.js:41
+await in (anonymous)		
+r	@	AdminLayout-CCW6zC0n.js:41
+Wt	@	index-CXWBURLA.js:37
+Xt	@	index-CXWBURLA.js:37
+Us	@	index-CXWBURLA.js:37
+yc	@	index-CXWBURLA.js:37
+wc	@	index-CXWBURLA.js:37
+(anonymous)	@	index-CXWBURLA.js:37
+Ol	@	index-CXWBURLA.js:40
+Hr	@	index-CXWBURLA.js:37
+Oa	@	index-CXWBURLA.js:37
+pa	@	index-CXWBURLA.js:37
+lp	@	index-CXWBURLA.js:37
+index-CXWBURLA.js:89 
+ 
+ POST https://pgtpbwlehkibihrnnzym.supabase.co/rest/v1/blog_posts?on_conflict=id&select=* 400 (Bad Request)
+index-CXWBURLA.js:92 
+ Failed to save blog post to Supabase, falling back to local state 
+{code: 'PGRST204', details: null, hint: null, message: "Could not find the 'image_public_id' column of 'blog_posts' in the schema cache"}
+K	@	index-CXWBURLA.js:92
+await in K		
+o	@	AdminLayout-CCW6zC0n.js:41
+(anonymous)	@	AdminLayout-CCW6zC0n.js:41
+setTimeout		
+(anonymous)	@	AdminLayout-CCW6zC0n.js:41
+await in (anonymous)		
+r	@	AdminLayout-CCW6zC0n.js:41
+Wt	@	index-CXWBURLA.js:37
+Xt	@	index-CXWBURLA.js:37
+Us	@	index-CXWBURLA.js:37
+yc	@	index-CXWBURLA.js:37
+wc	@	index-CXWBURLA.js:37
+(anonymous)	@	index-CXWBURLA.js:37
+Ol	@	index-CXWBURLA.js:40
+Hr	@	index-CXWBURLA.js:37
+Oa	@	index-CXWBURLA.js:37
+pa	@	index-CXWBURLA.js:37
+lp	@	index-CXWBURLA.js:37
 
 
-respon di network yang saya dapatkan
-{"error":"Upsert failed","status":400,"detail":"{\"code\":\"PGRST204\",\"details\":null,\"hint\":null,\"message\":\"Could not find the 'gallerypublicids' column of 'destinations' in the schema cache\"}"}
+payload dari devTool network
+{id: 0, title: "test",…}
+author
+: 
+"test"
+category
+: 
+"test"
+content
+: 
+"<p>test</p>"
+date
+: 
+""
+id
+: 
+0
+imagePublicId
+: 
+"ujltpanqrg0bflhxlude"
+imageUrl
+: 
+"https://res.cloudinary.com/dscigfvuy/image/upload/v1758441635/ujltpanqrg0bflhxlude.webp"
+title
+: 
+"test"
