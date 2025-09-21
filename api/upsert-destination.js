@@ -130,6 +130,53 @@ export default async function handler(req, res) {
       safePayload.gallery_public_ids = toPgArrayLiteral(safePayload.gallery_public_ids);
     }
 
+    // If client didn't include public_ids but galleryImages/imageUrl refer to Cloudinary URLs,
+    // try to infer public_id from the URL path so we persist it server-side.
+    const extractCloudinaryPublicId = (url) => {
+      if (!url || typeof url !== 'string') return null;
+      try {
+        const u = new URL(url);
+        // typical Cloudinary URL: /<cloud>/image/upload/v123456/.../public_id.ext
+        const parts = u.pathname.split('/');
+        // find 'upload' segment
+        const uploadIndex = parts.findIndex(p => p === 'upload');
+        if (uploadIndex === -1) return null;
+        // public id is the remainder after optional version segment(s)
+        const remainder = parts.slice(uploadIndex + 1).join('/');
+        if (!remainder) return null;
+        // remove version prefix like v123456 if present
+        const withoutVersion = remainder.replace(/^v\d+\//, '');
+        // strip file extension
+        const lastSlash = withoutVersion.lastIndexOf('/');
+        const filename = lastSlash === -1 ? withoutVersion : withoutVersion.slice(lastSlash + 1);
+        const dot = filename.lastIndexOf('.');
+        const publicId = dot === -1 ? filename : filename.slice(0, dot);
+        return publicId || null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // Derive image_public_id when missing
+    if ((!('image_public_id' in safePayload) || safePayload.image_public_id == null) && safePayload.imageurl) {
+      const derived = extractCloudinaryPublicId(safePayload.imageurl);
+      if (derived) safePayload.image_public_id = derived;
+    }
+
+    // Derive gallery_public_ids when missing or containing nulls
+    if (Array.isArray(safePayload.galleryimages)) {
+      // only try to derive if gallery_public_ids absent or contains null/empty
+      const needDerive = !Array.isArray(safePayload.gallery_public_ids) || (Array.isArray(safePayload.gallery_public_ids) && safePayload.gallery_public_ids.some(v => v == null));
+      if (needDerive) {
+        const derived = safePayload.galleryimages.map((u) => extractCloudinaryPublicId(typeof u === 'string' ? u : ''));
+        // if at least one id derived, set gallery_public_ids to derived (strings or nulls)
+        if (derived.some(d => d)) {
+          safePayload.gallery_public_ids = derived.map(d => d || '');
+          safePayload.gallery_public_ids = toPgArrayLiteral(safePayload.gallery_public_ids);
+        }
+      }
+    }
+
     // Ensure JSONB fields are valid JSON structures (pricetiers, itinerary, galleryimages, mapcoordinates)
     const ensureJson = (k) => {
       if (!(k in safePayload)) return;
