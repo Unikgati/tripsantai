@@ -73,18 +73,25 @@ export default async function handler(req, res) {
     if (!payload || typeof payload !== 'object') return res.status(400).json({ error: 'Invalid payload' });
 
     // Minimal allowed fields; map camelCase keys to DB column names (lowercased)
-    const allowed = ['id','title','slug','shortDescription','longDescription','imageUrl','priceTiers','features','tags','duration'];
+    // Only include columns that exist in the `public.destinations` schema.
+    const allowed = [
+      'id','title','slug','longDescription','imageUrl','galleryImages',
+      'priceTiers','duration','minPeople','itinerary','facilities','categories','mapCoordinates'
+    ];
     const keyMap = {
       id: 'id',
       title: 'title',
       slug: 'slug',
-      shortDescription: 'shortdescription',
       longDescription: 'longdescription',
       imageUrl: 'imageurl',
+      galleryImages: 'galleryimages',
       priceTiers: 'pricetiers',
-      features: 'features',
-      tags: 'tags',
-      duration: 'duration'
+      duration: 'duration',
+      minPeople: 'minpeople',
+      itinerary: 'itinerary',
+      facilities: 'facilities',
+      categories: 'categories',
+      mapCoordinates: 'mapcoordinates'
     };
     const safePayload = {};
     for (const k of allowed) {
@@ -101,6 +108,20 @@ export default async function handler(req, res) {
     }
 
     // 4) Perform upsert via PostgREST (REST) using service role
+    // Convert JS arrays for Postgres text[] columns into Postgres array literal strings
+    const toPgArrayLiteral = (arr) => {
+      if (!Array.isArray(arr)) return arr;
+      // escape double quotes and backslashes
+      const escaped = arr.map(v => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"'));
+      return `{${escaped.join(',')}}`;
+    };
+    if ('facilities' in safePayload && Array.isArray(safePayload.facilities)) {
+      safePayload.facilities = toPgArrayLiteral(safePayload.facilities);
+    }
+    if ('categories' in safePayload && Array.isArray(safePayload.categories)) {
+      safePayload.categories = toPgArrayLiteral(safePayload.categories);
+    }
+
     const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations`, {
       method: 'POST',
       headers: {
