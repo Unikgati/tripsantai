@@ -47,9 +47,10 @@ export default async function handler(req, res) {
     const adminRows = await adminCheck.json();
     if (!Array.isArray(adminRows) || adminRows.length === 0) return res.status(403).json({ error: 'Not an admin' });
 
-    const payload = req.body;
-    const id = payload && (payload.id ?? payload.destinationId ?? payload.destination_id);
-    if (!id) return res.status(400).json({ error: 'Missing id' });
+  const payload = req.body;
+  const id = payload && (payload.id ?? payload.destinationId ?? payload.destination_id);
+  // Accept id === 0 as a valid id (frontend historically used id=0 for some rows)
+  if (id === undefined || id === null) return res.status(400).json({ error: 'Missing id' });
 
     // perform delete using service role
     const deleteResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations?id=eq.${encodeURIComponent(id)}`, {
