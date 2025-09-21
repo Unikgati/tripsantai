@@ -93,6 +93,12 @@ export default async function handler(req, res) {
         safePayload[col] = payload[k];
       }
     }
+    // Ensure primary key `id` exists; if not, generate a bigint-ish id using timestamp
+    if (!('id' in safePayload) || safePayload.id == null) {
+      const genId = Date.now();
+      // Ensure integer (bigint) by using timestamp and a random suffix
+      safePayload.id = Math.floor(genId * 1000 + Math.floor(Math.random() * 1000));
+    }
 
     // 4) Perform upsert via PostgREST (REST) using service role
     const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations`, {
