@@ -124,18 +124,23 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
         }
     };
 
-    setPublicIds(prevP => {
-        const pid = prevP[indexToDelete];
-        if (pid) {
-            setRemovedPublicIds(prev => [...prev, pid]);
-        } else {
-            // fallback: try derive from current imageUrls snapshot
-            const url = imageUrls[indexToDelete];
-            const derived = deriveFromUrl(url);
-            if (derived) setRemovedPublicIds(prev => [...prev, derived]);
-        }
-        return prevP.filter((_, index) => index !== indexToDelete);
-    });
+    // Read current values synchronously to avoid relying on batched state values
+    const currentPid = publicIds[indexToDelete];
+    const currentUrl = imageUrls[indexToDelete];
+    let removedId: string | null = null;
+    if (currentPid) removedId = currentPid;
+    else removedId = deriveFromUrl(currentUrl);
+
+    if (removedId) {
+        setRemovedPublicIds(prev => {
+            // avoid duplicates
+            if (prev.includes(removedId as string)) return prev;
+            return [...prev, removedId as string];
+        });
+    }
+
+    // Remove aligned entries from arrays
+    setPublicIds(prev => prev.filter((_, index) => index !== indexToDelete));
     setImageUrls(prev => prev.filter((_, index) => index !== indexToDelete));
     setUploadProgress(prev => prev.filter((_, index) => index !== indexToDelete));
     setUploadFiles(prev => prev.filter((_, index) => index !== indexToDelete));
@@ -376,20 +381,16 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
 
             // If there are pending files, upload them now and replace previews with real URLs
             const finalImageUrls = [...imageUrls];
-            // Use a local array to collect public_ids during uploads to avoid relying on async React state updates
-            const localPublicIds = [...publicIds];
-            for (let i = 0; i < uploadFiles.length; i++) {
+            // Ensure localPublicIds aligns with finalImageUrls length
+            const localPublicIds = finalImageUrls.map((_, i) => (publicIds[i] ?? null));
+            for (let i = 0; i < finalImageUrls.length; i++) {
                 const file = uploadFiles[i];
                 if (file) {
                     try {
                         // update progress to 0
-                        setUploadProgress(prev => {
-                            const np = [...prev]; np[i] = 0; return np;
-                        });
+                        setUploadProgress(prev => { const np = [...prev]; np[i] = 0; return np; });
                         const res = await uploadToCloudinary(file, (pct: number) => {
-                            setUploadProgress(prev => {
-                                const np = [...prev]; np[i] = pct; return np;
-                            });
+                            setUploadProgress(prev => { const np = [...prev]; np[i] = pct; return np; });
                         });
                         finalImageUrls[i] = res.url;
                         // store public id locally so it's immediately available for the payload
@@ -415,7 +416,8 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 imagePublicId: localPublicIds && localPublicIds[0] ? localPublicIds[0] : null,
                 galleryPublicIds: localPublicIds && localPublicIds.length > 0 ? localPublicIds : [],
                 // tell server which Cloudinary public_ids were removed by the user so it can delete them
-                removed_public_ids: removedPublicIds,
+                // dedupe and only include if non-empty
+                ...(removedPublicIds && removedPublicIds.length > 0 ? { removed_public_ids: Array.from(new Set(removedPublicIds.filter(Boolean))) } : {}),
                 // ensure numeric fields are numbers
                 duration: Number(formData.duration) || 0,
                 minPeople: Number(formData.minPeople) || 0,
