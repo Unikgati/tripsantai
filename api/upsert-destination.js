@@ -72,10 +72,27 @@ export default async function handler(req, res) {
     const payload = req.body;
     if (!payload || typeof payload !== 'object') return res.status(400).json({ error: 'Invalid payload' });
 
-    // Minimal allowed fields; you can extend validation as needed
+    // Minimal allowed fields; map camelCase keys to DB column names (lowercased)
     const allowed = ['id','title','slug','shortDescription','longDescription','imageUrl','priceTiers','features','tags','duration'];
+    const keyMap = {
+      id: 'id',
+      title: 'title',
+      slug: 'slug',
+      shortDescription: 'shortdescription',
+      longDescription: 'longdescription',
+      imageUrl: 'imageurl',
+      priceTiers: 'pricetiers',
+      features: 'features',
+      tags: 'tags',
+      duration: 'duration'
+    };
     const safePayload = {};
-    for (const k of allowed) if (k in payload) safePayload[k] = payload[k];
+    for (const k of allowed) {
+      if (k in payload) {
+        const col = keyMap[k] || k.toLowerCase();
+        safePayload[col] = payload[k];
+      }
+    }
 
     // 4) Perform upsert via PostgREST (REST) using service role
     const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations`, {
