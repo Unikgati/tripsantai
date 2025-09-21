@@ -82,6 +82,8 @@ export default async function handler(req, res) {
       longDescription: 'longdescription',
       imageUrl: 'imageurl',
       galleryImages: 'galleryimages',
+  imagePublicId: 'image_public_id',
+  galleryPublicIds: 'gallery_public_ids',
       priceTiers: 'pricetiers',
       duration: 'duration',
       minPeople: 'minpeople',
@@ -122,6 +124,10 @@ export default async function handler(req, res) {
     }
     if ('categories' in safePayload && Array.isArray(safePayload.categories)) {
       safePayload.categories = toPgArrayLiteral(safePayload.categories);
+    }
+    // convert gallery_public_ids (array of Cloudinary public_ids) to Postgres array literal if present
+    if ('gallery_public_ids' in safePayload && Array.isArray(safePayload.gallery_public_ids)) {
+      safePayload.gallery_public_ids = toPgArrayLiteral(safePayload.gallery_public_ids);
     }
 
     // Ensure JSONB fields are valid JSON structures (pricetiers, itinerary, galleryimages, mapcoordinates)
