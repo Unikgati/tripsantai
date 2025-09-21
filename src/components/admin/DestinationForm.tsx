@@ -46,6 +46,8 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
     const [uploadFiles, setUploadFiles] = useState<(File | null)[]>(initialImageUrls.map(() => null));
     // aligned array of public_ids matching imageUrls order
     const [publicIds, setPublicIds] = useState<(string | null)[]>(initialPublicIds.map(id => id ?? null));
+    // track public_ids that the user deleted locally so server can remove them from Cloudinary
+    const [removedPublicIds, setRemovedPublicIds] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     // State for category input
@@ -102,10 +104,15 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
     };
 
     const handleDeleteImage = (indexToDelete: number) => {
+    // If the image being removed has an existing Cloudinary public_id, record it
+    setPublicIds(prevP => {
+        const pid = prevP[indexToDelete];
+        if (pid) setRemovedPublicIds(prev => [...prev, pid]);
+        return prevP.filter((_, index) => index !== indexToDelete);
+    });
     setImageUrls(prev => prev.filter((_, index) => index !== indexToDelete));
     setUploadProgress(prev => prev.filter((_, index) => index !== indexToDelete));
     setUploadFiles(prev => prev.filter((_, index) => index !== indexToDelete));
-    setPublicIds(prev => prev.filter((_, index) => index !== indexToDelete));
     };
 
     const handleSetMainImage = (indexToSet: number) => {

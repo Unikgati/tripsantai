@@ -172,6 +172,29 @@ export default async function handler(req, res) {
       }
     }
 
+    // If payload includes removed_public_ids, attempt to delete those assets from Cloudinary
+    if (Array.isArray(payload.removed_public_ids) && payload.removed_public_ids.length > 0) {
+      const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
+      if (CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        try {
+          const { v2: cloudinary } = await import('cloudinary').catch(err => { throw err; });
+          cloudinary.config({ cloud_name: CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
+          for (const pid of payload.removed_public_ids) {
+            try {
+              const result = await cloudinary.uploader.destroy(pid, { invalidate: true });
+              console.info('cloudinary destroy', pid, result && result.result ? result.result : result);
+            } catch (e) {
+              console.warn('cloudinary destroy failed for', pid, e && e.message ? e.message : e);
+            }
+          }
+        } catch (e) {
+          console.warn('Cloudinary removal failed (skipping)', e && e.message ? e.message : e);
+        }
+      } else {
+        console.info('Skipping Cloudinary removal: credentials not configured');
+      }
+    }
+
     // Ensure JSONB fields are valid JSON structures (pricetiers, itinerary, galleryimages, mapcoordinates)
     const ensureJson = (k) => {
       if (!(k in safePayload)) return;
