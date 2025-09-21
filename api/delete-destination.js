@@ -25,6 +25,7 @@ export default async function handler(req, res) {
   if (!userToken) return res.status(401).json({ error: 'Missing user token' });
 
   try {
+    console.info('delete-destination called', { method: req.method, timestamp: new Date().toISOString() });
     // verify user token
     const userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       method: 'GET',
@@ -52,6 +53,8 @@ export default async function handler(req, res) {
   // Accept id === 0 as a valid id (frontend historically used id=0 for some rows)
   if (id === undefined || id === null) return res.status(400).json({ error: 'Missing id' });
 
+  console.info('delete-destination payload', { id, receivedPublicIds: Array.isArray(payload.publicIds) ? payload.publicIds.length : undefined });
+
     // Before deleting the DB row, fetch the row to collect Cloudinary public_ids
     const fetchResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations?id=eq.${encodeURIComponent(id)}&select=id,image_public_id,gallery_public_ids`, {
       method: 'GET',
@@ -70,8 +73,15 @@ export default async function handler(req, res) {
 
     const rows = await fetchResp.json();
     const destRow = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    console.info('delete-destination db row', {
+      id: destRow?.id ?? null,
+      image_public_id: destRow?.image_public_id ? true : false,
+      gallery_public_ids_count: Array.isArray(destRow?.gallery_public_ids) ? destRow.gallery_public_ids.length : 0,
+    });
 
     // If we have cloudinary keys in env, attempt to remove assets
+    const cloudResults = { deleted: [], notFound: [], errors: [] };
+
     if (destRow && (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)) {
       try {
         const cloudinary = require('cloudinary').v2;
@@ -87,16 +97,28 @@ export default async function handler(req, res) {
         // filter falsy/empty values
         toDelete = toDelete.filter(Boolean);
 
+        console.info('cloudinary delete list', { count: toDelete.length, listPreview: toDelete.slice(0, 10) });
+
         for (const pid of toDelete) {
           try {
             const result = await cloudinary.uploader.destroy(pid, { invalidate: true });
-            console.log('Cloudinary delete result for', pid, result && result.result ? result.result : result);
+            const outcome = result && result.result ? result.result : result;
+            console.info('cloudinary delete result', { publicId: pid, outcome });
+            if (outcome === 'ok' || (outcome && typeof outcome === 'object' && outcome.result === 'ok')) {
+              cloudResults.deleted.push(pid);
+            } else if (outcome === 'not found' || (outcome && typeof outcome === 'object' && outcome.result === 'not found')) {
+              cloudResults.notFound.push(pid);
+            } else {
+              cloudResults.errors.push({ publicId: pid, outcome });
+            }
           } catch (e) {
             console.warn('Cloudinary delete failed for', pid, e && e.message ? e.message : e);
+            cloudResults.errors.push({ publicId: pid, message: e && e.message ? e.message : String(e) });
           }
         }
       } catch (e) {
         console.warn('Cloudinary removal failed (skipping)', e && e.message ? e.message : e);
+        cloudResults.errors.push({ message: 'cloudinary setup failed', detail: e && e.message ? e.message : String(e) });
       }
     }
 
@@ -110,7 +132,7 @@ export default async function handler(req, res) {
       }
     });
 
-    if (!deleteResp.ok) {
+  if (!deleteResp.ok) {
       const txt = await deleteResp.text().catch(() => '<no body>');
       console.error('delete-destination: PostgREST delete failed', deleteResp.status, txt);
       return res.status(deleteResp.status || 500).json({ error: 'Delete failed', status: deleteResp.status, detail: txt });
@@ -118,7 +140,8 @@ export default async function handler(req, res) {
 
     let deleted;
     try { deleted = await deleteResp.json(); } catch (e) { deleted = null; }
-    return res.status(200).json({ data: deleted });
+  console.info('delete-destination completed', { id, deletedCount: Array.isArray(deleted) ? deleted.length : 0, cloudResults });
+  return res.status(200).json({ data: deleted, cloudResults });
 
   } catch (err) {
     console.error('delete-destination error', err);
