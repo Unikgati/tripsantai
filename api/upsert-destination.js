@@ -104,7 +104,9 @@ export default async function handler(req, res) {
     }
 
     // Ensure primary key `id` exists; if not, generate a bigint-ish id using timestamp
-    if (!('id' in safePayload) || safePayload.id == null) {
+    // Also treat id === 0 as missing (frontend uses id=0 for new rows), which would
+    // otherwise cause a duplicate key violation on the primary key.
+    if (!('id' in safePayload) || safePayload.id == null || Number(safePayload.id) === 0) {
       const genId = Date.now();
       safePayload.id = Math.floor(genId * 1000 + Math.floor(Math.random() * 1000));
     }
@@ -136,7 +138,8 @@ export default async function handler(req, res) {
     };
     ['pricetiers','itinerary','galleryimages','mapcoordinates'].forEach(ensureJson);
 
-    const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations`, {
+  // Use PostgREST upsert via on_conflict=id to avoid duplicate key errors when row exists
+  const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/destinations?on_conflict=id`, {
       method: 'POST',
       headers: {
         'apikey': SERVICE_ROLE_KEY,
