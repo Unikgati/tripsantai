@@ -21,6 +21,8 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
     const [uploadFile, setUploadFile] = useState<File | null>(null);
     // track Cloudinary public_id for the image (nullable)
     const [imagePublicId, setImagePublicId] = useState<string | null>((post as any).imagePublicId ?? null);
+    // track public_ids removed during this edit session so server can delete them
+    const [removedPublicIds, setRemovedPublicIds] = useState<string[]>([]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -34,6 +36,32 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || !e.target.files[0]) return;
         const file = e.target.files[0] as File;
+        // If there is an existing image (either with known public id or URL), record it for deletion
+        const deriveFromUrl = (url: string | undefined | null) => {
+            if (!url) return null;
+            try {
+                const u = new URL(url);
+                const parts = u.pathname.split('/');
+                const uploadIndex = parts.findIndex(p => p === 'upload');
+                if (uploadIndex === -1) return null;
+                const remainder = parts.slice(uploadIndex + 1).join('/');
+                if (!remainder) return null;
+                const withoutVersion = remainder.replace(/^v\d+\//, '');
+                const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
+                return publicIdWithPath || null;
+            } catch (e) {
+                return null;
+            }
+        };
+
+        // If replacing an existing image, accumulate its public id for deletion
+        const prevPid = imagePublicId || (formData as any).imagePublicId || null;
+        const prevDerived = !prevPid ? deriveFromUrl(formData.imageUrl) : null;
+        const toRemove = prevPid || prevDerived;
+        if (toRemove) {
+            setRemovedPublicIds(prev => prev.includes(toRemove as string) ? prev : [...prev, toRemove as string]);
+        }
+
         // Do NOT auto-upload here. Just show preview and store file for upload on submit.
         setUploadFile(file);
         const reader = new FileReader();
@@ -63,6 +91,31 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
     };
 
     const handleRemoveImage = () => {
+    // When removing image, try to record public_id (or derive from URL) so server can delete
+    const deriveFromUrl = (url: string | undefined | null) => {
+        if (!url) return null;
+        try {
+            const u = new URL(url);
+            const parts = u.pathname.split('/');
+            const uploadIndex = parts.findIndex(p => p === 'upload');
+            if (uploadIndex === -1) return null;
+            const remainder = parts.slice(uploadIndex + 1).join('/');
+            if (!remainder) return null;
+            const withoutVersion = remainder.replace(/^v\d+\//, '');
+            const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
+            return publicIdWithPath || null;
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const prevPid = imagePublicId || (formData as any).imagePublicId || null;
+    const prevDerived = !prevPid ? deriveFromUrl(formData.imageUrl) : null;
+    const toRemove = prevPid || prevDerived;
+    if (toRemove) {
+        setRemovedPublicIds(prev => prev.includes(toRemove as string) ? prev : [...prev, toRemove as string]);
+    }
+
     setFormData(prev => ({ ...prev, imageUrl: '' }));
     setImagePublicId(null);
         if(fileInputRef.current) {
@@ -95,7 +148,10 @@ export const BlogPostForm: React.FC<BlogPostFormProps> = ({ post, onSave, onCanc
                     ...formData,
                     imageUrl: finalImageUrl || '',
                     imagePublicId: finalPublicId,
-                } as BlogPost & { imagePublicId?: string | null };
+                    ...(removedPublicIds && removedPublicIds.length > 0 ? { removed_public_ids: Array.from(new Set(removedPublicIds.filter(Boolean))) } : {}),
+                } as BlogPost & { imagePublicId?: string | null; removed_public_ids?: string[] };
+
+                try { console.debug('Submitting removed_public_ids:', removedPublicIds); } catch (e) {}
 
                 // Simulate short delay for UX parity
                 setTimeout(() => {
