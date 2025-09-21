@@ -26,6 +26,8 @@ CREATE POLICY IF NOT EXISTS blog_posts_admin_full ON public.blog_posts
 ALTER TABLE IF EXISTS public.orders ENABLE ROW LEVEL SECURITY;
 CREATE POLICY IF NOT EXISTS orders_insert_public ON public.orders
   FOR INSERT USING (true) WITH CHECK (true);
+CREATE POLICY IF NOT EXISTS orders_select_admin ON public.orders
+  FOR SELECT USING (EXISTS (SELECT 1 FROM public.admins a WHERE a.auth_uid = auth.uid()));
 CREATE POLICY IF NOT EXISTS orders_update_owner_or_admin ON public.orders
   FOR UPDATE, DELETE USING (
     (auth.uid() IS NOT NULL AND auth.uid() = user_id)
@@ -86,6 +88,11 @@ create policy public_select_blog_posts on public.blog_posts for select using (tr
 drop policy if exists orders_insert_public on public.orders;
 -- For INSERT policies: only WITH CHECK is allowed. USING is ignored for INSERT and causes errors.
 create policy orders_insert_public on public.orders for insert with check (true);
+
+drop policy if exists orders_select_admin on public.orders;
+create policy orders_select_admin on public.orders for select using (
+  exists (select 1 from public.admins a where a.auth_uid = auth.uid())
+);
 
 -- Orders: restrict update/delete to admin only (admins table or admin claim)
 drop policy if exists orders_update_admin_or_owner on public.orders;

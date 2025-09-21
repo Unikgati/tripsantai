@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Order } from '../../types';
 import Loading from '../../components/Loading';
-import { fetchInvoiceById, fetchOrderById, fetchInvoiceByToken } from '../../lib/supabase';
+import { fetchInvoiceById, fetchOrderById, fetchInvoiceByToken, fetchInvoiceWithOrderByToken } from '../../lib/supabase';
 
 interface InvoicePageProps {
     orders?: Order[];
@@ -30,13 +30,12 @@ export const InvoicePage: React.FC<InvoicePageProps> = ({ orders = [], appSettin
             setLoading(true);
             // If token present, prefer fetching by token (public link)
             if (invoiceToken) {
-                const inv = await fetchInvoiceByToken(String(invoiceToken));
+                // Prefer a single RPC that returns invoice + order so RLS doesn't block the order fetch.
+                const rpc = await fetchInvoiceWithOrderByToken(String(invoiceToken));
                 if (!mounted) return;
-                if (inv) {
-                    setInvoiceRecord(inv);
-                    const ord = await fetchOrderById(inv.order_id);
-                    if (!mounted) return;
-                    if (ord) setOrder(ord as Order);
+                if (rpc) {
+                    setInvoiceRecord(rpc.invoice ?? null);
+                    if (rpc.order) setOrder(rpc.order as Order);
                 }
                 setLoading(false);
                 return;

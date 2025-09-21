@@ -575,14 +575,62 @@ export async function fetchInvoiceByToken(token: string): Promise<any | null> {
   if (!useSupabase) return null;
   try {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from('invoices').select('*').eq('share_token', token).limit(1).single();
+    // Use RPC to call SECURITY DEFINER function that returns invoice by token.
+    // This avoids RLS blocking anonymous callers from selecting directly from invoices.
+    const { data, error } = await supabase.rpc('fetch_invoice_by_token', { p_token: token });
     if (error) {
-      console.warn('[SUPABASE] fetchInvoiceByToken failed', error.message || error);
+      console.warn('[SUPABASE] fetchInvoiceByToken rpc failed', error.message || error);
       return null;
     }
+    // RPC returns an array of rows for set-returning functions; return first row if present
+    if (Array.isArray(data)) return data[0] ?? null;
     return data ?? null;
   } catch (err) {
     console.warn('[SUPABASE] fetchInvoiceByToken error', err);
+    return null;
+  }
+}
+
+// Fetch invoice together with its order by token using security-definer RPC
+export async function fetchInvoiceWithOrderByToken(token: string): Promise<any | null> {
+  const useSupabase = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!useSupabase) return null;
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.rpc('fetch_invoice_by_token_with_order', { p_token: token });
+    if (error) {
+      console.warn('[SUPABASE] fetchInvoiceWithOrderByToken rpc failed', error.message || error);
+      return null;
+    }
+    const row = Array.isArray(data) ? data[0] ?? null : data ?? null;
+    if (!row) return null;
+    // Map RPC columns to shapes the app expects
+    return {
+      invoice: {
+        id: row.invoice_id ?? row.id,
+        total: row.total,
+        metadata: row.metadata,
+        share_token: row.share_token,
+        created_at: row.created_at,
+      },
+      order: {
+        id: row.order_id,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone,
+        destinationId: row.destination_id,
+        destinationTitle: row.destination_title,
+        orderDate: row.order_date,
+        departureDate: row.departure_date,
+        participants: row.participants,
+        totalPrice: Number(row.total_price ?? row.totalPrice ?? 0),
+        status: row.status ?? 'Baru',
+        paymentStatus: row.payment_status ?? undefined,
+        paymentHistory: row.payment_history ?? undefined,
+        notes: row.notes ?? null,
+      }
+    };
+  } catch (err) {
+    console.warn('[SUPABASE] fetchInvoiceWithOrderByToken error', err);
     return null;
   }
 }
