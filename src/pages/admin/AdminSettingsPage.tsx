@@ -204,30 +204,50 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
     }, [appSettings]);
     const [isSaving, setIsSaving] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+    // Track files selected but not yet uploaded (deferred until Save)
+    const [pendingFiles, setPendingFiles] = useState<Record<string, File | null>>({});
+    // Track public_ids for images that existed before edit so we can request deletion later
+    const [removedPublicIds, setRemovedPublicIds] = useState<string[]>([]);
     
     const handleSettingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setLocalSettings(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleImageUpload = async (file: File, key: keyof AppSettings) => {
-        // immediate preview using object URL
-        const objectUrl = URL.createObjectURL(file);
-        setLocalSettings(prev => ({ ...prev, [key]: objectUrl }));
-        try {
-            setUploadProgress(p => ({ ...p, [String(key)]: 0 }));
-            const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(p => ({ ...p, [String(key)]: pct })));
-            const uploadedUrl = typeof res === 'string' ? res : res.url;
-            setLocalSettings(prev => ({ ...prev, [key]: uploadedUrl }));
-        } catch (err) {
-            console.warn('[CLOUDINARY] upload failed for', key, err);
-            // keep object URL preview but do not persist base64
-        } finally {
-            setUploadProgress(p => {
-                const copy = { ...p };
-                delete copy[String(key)];
-                return copy;
-            });
+    // Deferred upload: only store selected file and preview; perform real upload on Save
+    const handleImageUpload = (file: File, key: keyof AppSettings) => {
+        // Show immediate preview as data URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setLocalSettings(prev => ({ ...prev, [key]: reader.result as string }));
+            setUploadProgress(p => ({ ...p, [String(key)]: -2 })); // -2 = pending
+        };
+        reader.readAsDataURL(file);
+
+        // Track pending file for upload on Save
+        setPendingFiles(p => ({ ...p, [String(key)]: file }));
+
+        // If there was an existing image URL, try to derive its Cloudinary public_id and mark for removal
+        const deriveFromUrl = (url: string | undefined | null) => {
+            if (!url) return null;
+            try {
+                const u = new URL(url);
+                const parts = u.pathname.split('/');
+                const uploadIndex = parts.findIndex(p => p === 'upload');
+                if (uploadIndex === -1) return null;
+                const remainder = parts.slice(uploadIndex + 1).join('/');
+                if (!remainder) return null;
+                const withoutVersion = remainder.replace(/^v\d+\//, '');
+                const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
+                return publicIdWithPath || null;
+            } catch (e) {
+                return null;
+            }
+        };
+        const prevUrl = (localSettings as any)[String(key)];
+        const prevPid = deriveFromUrl(prevUrl);
+        if (prevPid) {
+            setRemovedPublicIds(prev => prev.includes(prevPid as string) ? prev : [...prev, prevPid as string]);
         }
     };
 
@@ -243,7 +263,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
         setLocalSettings(updated);
         setIsSaving(true);
 
-        // call parent save handler optimistically
+        // call parent save handler optimistically to clear UI and persist change
         try {
             onSaveSettings(updated);
         } catch (err) {
@@ -283,28 +303,44 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
         }
     };
 
-    const handleSave = () => {
-        // Prevent saving if any image fields still contain object URLs or data URIs (upload in progress or failed)
-        const containsPreviewUrl = (val: any) => typeof val === 'string' && (val.startsWith('blob:') || val.startsWith('data:'));
-        const problematic = Object.keys(localSettings).some(k => {
-            const v: any = (localSettings as any)[k];
-            if (containsPreviewUrl(v)) return true;
-            return false;
-        }) || (localSettings.heroSlides || []).some(s => containsPreviewUrl(s.imageUrl));
-
-        if (problematic) {
-            // simple UX: inform the user to wait for uploads to finish
-            // do not proceed with saving to avoid storing local object/data URLs in the DB
-            // (a more advanced UX could wire upload progress into the parent)
-            showToast('Ada gambar yang masih dalam proses upload atau hanya preview lokal. Tunggu sampai upload selesai sebelum menyimpan.', 'error');
-            return;
-        }
-
+    const handleSave = async () => {
         setIsSaving(true);
-        setTimeout(() => {
-            onSaveSettings(localSettings);
+
+        try {
+            // Upload any pending files first
+            const keys = Object.keys(pendingFiles).filter(k => pendingFiles[k]);
+            for (const k of keys) {
+                const file = pendingFiles[k];
+                if (!file) continue;
+                setUploadProgress(p => ({ ...p, [k]: 0 }));
+                try {
+                    const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(p => ({ ...p, [k]: pct })));
+                    const uploadedUrl = typeof res === 'string' ? res : res.url;
+                    // set the final URL into localSettings
+                    setLocalSettings(prev => ({ ...prev, [k]: uploadedUrl }));
+                } catch (err) {
+                    console.warn('[CLOUDINARY] failed to upload pending file for', k, err);
+                    showToast('Gagal mengunggah salah satu gambar. Periksa koneksi dan coba lagi.', 'error');
+                    setUploadProgress(p => { const copy = { ...p }; delete copy[k]; return copy; });
+                    setIsSaving(false);
+                    return;
+                } finally {
+                    setUploadProgress(p => { const copy = { ...p }; delete copy[k]; return copy; });
+                }
+            }
+
+            // Clear pendingFiles map now that uploads succeeded
+            setPendingFiles({});
+
+            // After uploads, call parent save handler with canonical settings
+            try {
+                onSaveSettings(localSettings);
+            } catch (err) {
+                console.warn('onSaveSettings threw', err);
+            }
+        } finally {
             setIsSaving(false);
-        }, 1500);
+        }
     };
 
 
