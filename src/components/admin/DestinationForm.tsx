@@ -649,7 +649,7 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                 </div>
 
                 <div className="form-group">
-                    <label>Rencana Perjalanan</label>
+                    <label>Itinerary</label>
                     <div className="itinerary-editor">
                         {formData.itinerary.map((item, index) => {
                             const isOpen = activeItineraryIndex === index;
@@ -728,7 +728,7 @@ export const DestinationForm: React.FC<DestinationFormProps> = ({ destination, o
                     isOpen={itineraryItemToDeleteIndex !== null}
                     onClose={() => setItineraryItemToDeleteIndex(null)}
                     onConfirm={handleConfirmDeleteItineraryItem}
-                    title="Konfirmasi Hapus Rencana Perjalanan"
+                    title="Konfirmasi Hapus Itinerary"
                     confirmButtonText="Hapus"
                 >
                     <p>Apakah Anda yakin ingin menghapus <strong>Hari {itineraryItemToDeleteIndex + 1}</strong>? Tindakan ini tidak dapat dibatalkan.</p>

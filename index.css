@@ -1141,6 +1141,15 @@ body.dark .wishlist-btn:hover {
 .tab-panel {
     /* Removed top padding to tighten tab panel spacing on destination detail page */
     padding-top: 0;
+
+/* Improve touch/scroll behavior for tab panels on mobile: prevent horizontal overscroll
+   so swipe gestures register reliably and content doesn't push layout horizontally. */
+.tab-panel {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y; /* allow vertical scroll, allow JS to handle horizontal swipes */
+    min-width: 0; /* prevents flexbox children from overflowing their container */
+    overflow-x: hidden; /* avoid accidental horizontal scroll during gestures */
+}
 }
 
 /* Admin tabs and badge styling */
@@ -3406,3 +3415,48 @@ input[type="color"]::-moz-color-swatch {
 .skeleton-line-short { width: 40%; height: 12px; }
 .skeleton-line-medium { width: 70%; height: 12px; }
 .skeleton-line-long { width: 100%; height: 12px; }
+
+/* Responsive overflow fixes for Destination Detail page */
+/* Ensure grid/flex children can shrink and avoid causing horizontal scroll */
+.destination-content-layout {
+    width: 100%;
+    box-sizing: border-box;
+}
+.destination-content-layout > * {
+    min-width: 0; /* allow children to shrink below their content width */
+}
+.destination-main-content,
+.info-sidebar,
+.tab-list,
+.tab-button,
+.thumbnail {
+    min-width: 0;
+}
+
+.thumbnail-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Ensure tab-list doesn't push page wider than viewport */
+.tab-list {
+    width: 100%;
+    box-sizing: border-box;
+}
+.tab-button-label { min-width: 0; }
+
+/* Mobile: stack sidebar and main content to prevent horizontal overflow */
+@media (max-width: 767px) {
+    .destination-content-layout {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .info-sidebar {
+        position: static;
+        top: auto;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    .gallery-container .main-image {
+        height: 40vh; /* slightly smaller on mobile for better fit */
+    }
+}

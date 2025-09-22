@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { Destination, Page } from '../types';
 import { ClockIcon, UsersIcon, CameraIcon, MapPinIcon, CheckCircleIcon } from '../components/Icons';
@@ -17,6 +17,9 @@ export const DestinationDetailPage: React.FC<DestinationDetailPageProps> = ({ de
     const [activeImage, setActiveImage] = useState(destination.imageUrl);
     const [activeTab, setActiveTab] = useState<Tab>('about');
     const [isLoading, setIsLoading] = useState(true);
+    // refs for tracking touch/swipe gestures
+    const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+    const touchEndRef = useRef<{ x: number; y: number } | null>(null);
     
     const tiers = Array.isArray(destination.priceTiers) && destination.priceTiers.length > 0 ? destination.priceTiers : [{ price: 0 }];
     const startingPrice = Math.min(...tiers.map(t => t?.price ?? 0));
@@ -126,7 +129,7 @@ export const DestinationDetailPage: React.FC<DestinationDetailPageProps> = ({ de
                                     <span className="tab-button-icon" aria-hidden>
                                         <MapPinIcon />
                                     </span>
-                                    <span className="tab-button-label">Rencana Perjalanan</span>
+                                    <span className="tab-button-label">Itinerary</span>
                                 </button>
                                 <button
                                     id="tab-facilities"
@@ -149,6 +152,41 @@ export const DestinationDetailPage: React.FC<DestinationDetailPageProps> = ({ de
                             className="tab-panel"
                             role="tabpanel"
                             aria-labelledby={`tab-${activeTab}`}
+                            onTouchStart={(e) => {
+                                const t = e.touches[0];
+                                touchStartRef.current = { x: t.clientX, y: t.clientY };
+                                touchEndRef.current = null;
+                            }}
+                            onTouchMove={(e) => {
+                                const t = e.touches[0];
+                                touchEndRef.current = { x: t.clientX, y: t.clientY };
+                            }}
+                            onTouchEnd={() => {
+                                const start = touchStartRef.current;
+                                const end = touchEndRef.current;
+                                if (!start || !end) return;
+                                const dx = end.x - start.x;
+                                const dy = end.y - start.y;
+                                const absDx = Math.abs(dx);
+                                const absDy = Math.abs(dy);
+                                const SWIPE_THRESHOLD = 50; // px
+                                if (absDx > SWIPE_THRESHOLD && absDx > absDy) {
+                                    // horizontal swipe
+                                    const tabs: Tab[] = ['about', 'itinerary', 'facilities'];
+                                    const currentIndex = tabs.indexOf(activeTab);
+                                    if (dx < 0) {
+                                        // swipe left => next tab
+                                        const nextIndex = Math.min(tabs.length - 1, currentIndex + 1);
+                                        if (nextIndex !== currentIndex) setActiveTab(tabs[nextIndex]);
+                                    } else {
+                                        // swipe right => previous tab
+                                        const prevIndex = Math.max(0, currentIndex - 1);
+                                        if (prevIndex !== currentIndex) setActiveTab(tabs[prevIndex]);
+                                    }
+                                }
+                                touchStartRef.current = null;
+                                touchEndRef.current = null;
+                            }}
                         >
                             {renderTabContent()}
                         </div>
