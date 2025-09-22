@@ -361,6 +361,38 @@ export async function fetchOrders(): Promise<any[]> {
 // Fetch app settings from the single-row app_settings table (id = 1)
 export async function fetchAppSettings(): Promise<any | null> {
   const supabase = getSupabaseClient();
+  // Prefer the public view which is safe to expose to anonymous clients.
+  try {
+    const { data: publicData, error: publicErr } = await supabase.from('app_settings_public').select('*').limit(1).single();
+    if (!publicErr && publicData) {
+      const row = publicData as any;
+      return {
+        theme: row.theme ?? 'light',
+        accentColor: row.accentcolor ?? '#3182ce',
+        brandName: row.brandname ?? 'TravelGo',
+        tagline: row.tagline ?? '',
+        logoLightUrl: row.logolighturl ?? '',
+        logoDarkUrl: row.logodarkurl ?? '',
+        favicon16Url: row.favicon16url ?? '',
+        favicon192Url: row.favicon192url ?? '',
+        favicon512Url: row.favicon512url ?? '',
+        email: row.email ?? '',
+        address: row.address ?? '',
+        whatsappNumber: row.whatsappnumber ?? '',
+        facebookUrl: row.facebookurl ?? '',
+        instagramUrl: row.instagramurl ?? '',
+        twitterUrl: row.twitterurl ?? '',
+        bankName: row.bankname ?? '',
+        bankAccountNumber: row.bankaccountnumber ?? '',
+        bankAccountHolder: row.bankaccountholder ?? '',
+        heroSlides: row.heroslides ?? [],
+      };
+    }
+  } catch (e) {
+    // ignore and fallback to direct app_settings lookup (may require auth)
+  }
+
+  // Fallback to querying the protected table (useful when admin is logged-in)
   const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).limit(1).single();
   if (error) {
     // If row doesn't exist or permission denied, return null to let client fallback to defaults/localStorage
