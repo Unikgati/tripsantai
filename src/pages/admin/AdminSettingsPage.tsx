@@ -310,11 +310,43 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
         let finalSettings: AppSettings = { ...localSettings };
 
         try {
-            // Upload any pending files into finalSettings
-            const keys = Object.keys(pendingFiles).filter(k => pendingFiles[k]);
-            for (const k of keys) {
-                const file = pendingFiles[k];
+            // Upload any pending files into finalSettings.
+            // Also handle previews saved as data: URLs by converting them to Blob and uploading.
+            const isDataUrl = (v: any) => typeof v === 'string' && (v.startsWith('data:') || v.startsWith('blob:'));
+
+            const keySet = new Set<string>();
+            Object.keys(pendingFiles).forEach(k => { if (pendingFiles[k]) keySet.add(k); });
+            // Also include any keys in localSettings that currently contain data URLs (preview)
+            Object.keys(finalSettings).forEach(k => {
+                const v = (finalSettings as any)[k];
+                if (isDataUrl(v)) keySet.add(k);
+            });
+
+            for (const k of Array.from(keySet)) {
+                let file: File | null = (pendingFiles as any)[k] ?? null;
+
+                // If no File object but value is a data: URL, convert it to a Blob and File
+                if (!file) {
+                    const val = (finalSettings as any)[k];
+                    if (isDataUrl(val)) {
+                        try {
+                            // fetch supports data: URLs in browsers and returns a Response we can blob()
+                            // eslint-disable-next-line no-undef
+                            const resp = await fetch(val);
+                            const blob = await resp.blob();
+                            const ext = (blob.type && blob.type.split('/')[1]) || 'png';
+                            file = new File([blob], `${k}.${ext}`, { type: blob.type || 'image/png' });
+                        } catch (e) {
+                            console.warn('[UPLOAD] failed to convert data URL to Blob for', k, e);
+                            showToast('Gagal memproses preview gambar. Silakan coba pilih file lagi.', 'error');
+                            setIsSaving(false);
+                            return;
+                        }
+                    }
+                }
+
                 if (!file) continue;
+
                 setUploadProgress(p => ({ ...p, [k]: 0 }));
                 try {
                     const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(p => ({ ...p, [k]: pct })));
