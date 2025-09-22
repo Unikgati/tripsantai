@@ -20,6 +20,31 @@ export const DestinationDetailPage: React.FC<DestinationDetailPageProps> = ({ de
     // refs for tracking touch/swipe gestures
     const touchStartRef = useRef<{ x: number; y: number } | null>(null);
     const touchEndRef = useRef<{ x: number; y: number } | null>(null);
+    // separate refs for main image swipe (carousel/drag)
+    const mainImageTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+    const mainImageTouchEndRef = useRef<{ x: number; y: number } | null>(null);
+    const mainImageContainerRef = useRef<HTMLDivElement | null>(null);
+
+    // carousel state: compute images array and current index
+    const imgs = (destination.galleryImages && destination.galleryImages.length > 0)
+        ? destination.galleryImages
+        : [destination.imageUrl].filter(Boolean) as string[];
+    const [currentIndex, setCurrentIndex] = useState<number>(() => {
+        const idx = imgs.indexOf(destination.imageUrl || '');
+        return idx >= 0 ? idx : 0;
+    });
+
+    // drag/animation state for carousel
+    const [dragX, setDragX] = useState<number>(0); // live drag offset in px
+    const dragXRef = useRef<number>(0);
+    const [isAnimating, setIsAnimating] = useState<boolean>(false);
+    const animTimeoutRef = useRef<number | null>(null);
+    const ANIM_DURATION = 300; // ms
+
+    // keep activeImage in sync with currentIndex
+    useEffect(() => {
+        if (imgs[currentIndex]) setActiveImage(imgs[currentIndex]);
+    }, [currentIndex]);
     
     const tiers = Array.isArray(destination.priceTiers) && destination.priceTiers.length > 0 ? destination.priceTiers : [{ price: 0 }];
     const startingPrice = Math.min(...tiers.map(t => t?.price ?? 0));
@@ -83,16 +108,81 @@ export const DestinationDetailPage: React.FC<DestinationDetailPageProps> = ({ de
                 </div>
 
                 <section className="gallery-container">
-                    <div className="main-image" style={{ backgroundImage: `url(${activeImage})` }}>
-                        {/* The image is now a background, so this div is empty */}
+                    <div
+                        className="main-image"
+                        ref={(el) => (mainImageContainerRef.current = el)}
+                    >
+                        <div
+                            className="main-image-track"
+                            onTouchStart={(e) => {
+                                if (isAnimating) return;
+                                const t = e.touches[0];
+                                mainImageTouchStartRef.current = { x: t.clientX, y: t.clientY };
+                                mainImageTouchEndRef.current = null;
+                                if (animTimeoutRef.current) window.clearTimeout(animTimeoutRef.current);
+                            }}
+                            onTouchMove={(e) => {
+                                if (isAnimating) return;
+                                const start = mainImageTouchStartRef.current;
+                                if (!start) return;
+                                const t = e.touches[0];
+                                const dx = t.clientX - start.x;
+                                setDragX(dx);
+                                dragXRef.current = dx;
+                                mainImageTouchEndRef.current = { x: t.clientX, y: t.clientY };
+                            }}
+                            onTouchEnd={() => {
+                                if (isAnimating) return;
+                                const start = mainImageTouchStartRef.current;
+                                const end = mainImageTouchEndRef.current;
+                                if (!start) {
+                                    setDragX(0);
+                                    return;
+                                }
+                                const dx = (end ? end.x : start.x) - start.x;
+                                const dy = end ? end.y - start.y : 0;
+                                const absDx = Math.abs(dx);
+                                const absDy = Math.abs(dy);
+                                const SWIPE_THRESHOLD = 40; // px
+                                if (absDx > SWIPE_THRESHOLD && absDx > absDy) {
+                                    // move to next/prev slide
+                                    if (dx < 0) {
+                                        setCurrentIndex(i => Math.min(imgs.length - 1, i + 1));
+                                    } else {
+                                        setCurrentIndex(i => Math.max(0, i - 1));
+                                    }
+                                }
+                                // animate snap
+                                setIsAnimating(true);
+                                setDragX(0);
+                                animTimeoutRef.current = window.setTimeout(() => {
+                                    setIsAnimating(false);
+                                    animTimeoutRef.current = null;
+                                }, ANIM_DURATION);
+                                mainImageTouchStartRef.current = null;
+                                mainImageTouchEndRef.current = null;
+                            }}
+                            style={{
+                                transform: `translateX(${ -currentIndex * 100 + (dragX / (mainImageContainerRef.current?.clientWidth || window.innerWidth)) * 100 }%)`,
+                                transition: isAnimating ? `transform ${ANIM_DURATION}ms ease` : 'none',
+                            }}
+                        >
+                            {imgs.map((src, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`main-image-slide ${idx === currentIndex ? 'active' : ''}`}
+                                    style={{ backgroundImage: `url(${src})` }}
+                                />
+                            ))}
+                        </div>
                     </div>
                     <div className="thumbnail-grid">
 
-                        {(destination.galleryImages ?? []).map((img, index) => (
+                        {imgs.map((img, index) => (
                             <button 
                                 key={index} 
-                                className={`thumbnail ${img === activeImage ? 'active' : ''}`}
-                                onClick={() => setActiveImage(img)}
+                                className={`thumbnail ${index === currentIndex ? 'active' : ''}`}
+                                onClick={() => setCurrentIndex(index)}
                                 aria-label={`Lihat gambar ${index + 1}`}
                             >
                                 <img src={img} alt={`Thumbnail ${index + 1}`} loading="lazy" decoding="async" />

@@ -937,6 +937,51 @@ body.dark .wishlist-btn:hover {
     animation: fadeIn 0.4s ease-in-out;
 }
 
+/* Make main-image respond well to touch gestures: allow vertical scrolling but let
+   JS detect horizontal swipes. Also ensure background stays centered and doesn't cause layout shift. */
+.main-image {
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+    background-repeat: no-repeat;
+}
+
+/* Carousel track for main image: slides are full-width and placed horizontally */
+.main-image-track {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    will-change: transform;
+}
+.main-image-slide {
+    flex: 0 0 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    transition: transform 300ms ease;
+}
+.main-image-slide.active {
+    /* no-op: active controlled via track translateX */
+}
+
+/* Ensure thumbnails remain touch-friendly */
+.thumbnail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+.thumbnail { aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; }
+
+@media (max-width: 640px) {
+    .main-image { height: 40vh; }
+}
+
+/* Inner element used for animated sliding of the main image */
+.main-image-inner {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    will-change: transform;
+    touch-action: none; /* inner handles transform, don't let browser intercept */
+}
+
 .thumbnail-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
