@@ -306,8 +306,11 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
     const handleSave = async () => {
         setIsSaving(true);
 
+        // Make a local copy of settings to assemble final payload (avoid relying on async setState)
+        let finalSettings: AppSettings = { ...localSettings };
+
         try {
-            // Upload any pending files first
+            // Upload any pending files into finalSettings
             const keys = Object.keys(pendingFiles).filter(k => pendingFiles[k]);
             for (const k of keys) {
                 const file = pendingFiles[k];
@@ -316,8 +319,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                 try {
                     const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(p => ({ ...p, [k]: pct })));
                     const uploadedUrl = typeof res === 'string' ? res : res.url;
-                    // set the final URL into localSettings
-                    setLocalSettings(prev => ({ ...prev, [k]: uploadedUrl }));
+                    // write uploaded URL into the finalSettings object
+                    (finalSettings as any)[k] = uploadedUrl;
                 } catch (err) {
                     console.warn('[CLOUDINARY] failed to upload pending file for', k, err);
                     showToast('Gagal mengunggah salah satu gambar. Periksa koneksi dan coba lagi.', 'error');
@@ -332,9 +335,12 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             // Clear pendingFiles map now that uploads succeeded
             setPendingFiles({});
 
-            // After uploads, call parent save handler with canonical settings
+            // Persist finalSettings to local state so UI reflects canonical values
+            setLocalSettings(finalSettings);
+
+            // Call parent save handler with finalSettings (ensures no data URIs are sent)
             try {
-                onSaveSettings(localSettings);
+                onSaveSettings(finalSettings);
             } catch (err) {
                 console.warn('onSaveSettings threw', err);
             }
