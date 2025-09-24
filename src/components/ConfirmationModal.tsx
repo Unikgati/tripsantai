@@ -25,7 +25,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     useEffect(() => {
         const handleEsc = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
-                onClose();
+                // Respect isLoading: don't allow closing while an action is in progress
+                if (!isLoading) onClose();
             }
         };
         window.addEventListener('keydown', handleEsc);
@@ -33,14 +34,14 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         return () => {
             window.removeEventListener('keydown', handleEsc);
         };
-    }, [onClose]);
+    }, [onClose, isLoading]);
 
     if (!isOpen) {
         return null;
     }
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={(e) => { if (!isLoading) onClose(); }}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>{title}</h2>
