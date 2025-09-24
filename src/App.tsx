@@ -343,8 +343,39 @@ const App = () => {
   // appropriate (most handlers already call navigate). Auto-syncing caused unexpected
   // redirects on direct URL loads, so it was removed.
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setIsAuthenticated(true);
+    try {
+      // Wait for Supabase client to have the authenticated session available before
+      // calling handleRefresh. Without this wait there's a race where handleRefresh
+      // runs while the client's session is not yet present, causing RLS to block
+      // select on `orders` and resulting in an empty list until a manual refresh.
+      try {
+        const supabase = getSupabaseClient();
+        let sessionReady = false;
+        // Poll briefly for the session to appear (total ~3s max)
+        for (let i = 0; i < 15; i++) {
+          try {
+            const { data } = await supabase.auth.getSession();
+            if (data?.session) {
+              sessionReady = true;
+              break;
+            }
+          } catch (e) {
+            // ignore and retry
+          }
+          await new Promise(r => setTimeout(r, 200));
+        }
+        // proceed to refresh regardless of sessionReady (handleRefresh has its own guards)
+      } catch (err) {
+        // ignore polling errors and proceed to refresh anyway
+      }
+
+      // Ensure admin sees up-to-date collections (orders/destinations/blog) immediately after login
+      await handleRefresh();
+    } catch (e) {
+      // non-blocking: navigation should still occur even if refresh fails
+    }
     try { navigate('/admin'); } catch (e) {}
   };
   const handleLogout = async () => {
