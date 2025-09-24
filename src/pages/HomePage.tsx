@@ -19,12 +19,103 @@ interface HomePageProps {
     isLoading?: boolean;
 }
 
-const Hero = ({ onSearch, slides }: { onSearch: (query: string) => void; slides: HeroSlide[] }) => {
+// Typing placeholder hook: cycles through phrases and types them into the input's placeholder
+function useTypingPlaceholder(inputRef: React.RefObject<HTMLInputElement>, phrases: string[], typeSpeed = 80, pause = 2000) {
+    const idxRef = React.useRef(0);
+    const charRef = React.useRef(0);
+    const timerRef = React.useRef<number | null>(null);
+
+    React.useEffect(() => {
+        if (!phrases || phrases.length === 0) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const el = inputRef.current;
+        if (!el) return;
+
+        // bail out for data-saver / slow connections
+        const nav = (navigator as any);
+        const connection = nav && nav.connection;
+        if (connection) {
+            const saveData = !!connection.saveData;
+            const slowTypes = ['slow-2g', '2g', '3g'];
+            const effective = connection.effectiveType;
+            if (saveData || (effective && slowTypes.includes(effective))) return;
+        }
+
+        // helper checks
+        const isFocused = () => document.activeElement === el;
+        const isHidden = () => document.hidden;
+
+        // use IntersectionObserver to ensure hero is visible (avoid typing when offscreen)
+        let heroVisible = true;
+        const heroEl = el.closest && (el.closest('.hero') as HTMLElement | null);
+        let io: IntersectionObserver | null = null;
+        if (heroEl && 'IntersectionObserver' in window) {
+            heroVisible = false;
+            io = new IntersectionObserver((entries) => {
+                heroVisible = entries.some(en => en.isIntersecting && en.intersectionRatio > 0);
+            }, { threshold: 0.1 });
+            io.observe(heroEl);
+        }
+
+        const loop = () => {
+            if (!el) return;
+            if (isHidden() || !heroVisible) {
+                // defer while page hidden or hero not visible
+                timerRef.current = window.setTimeout(loop, 1000);
+                return;
+            }
+            if (isFocused() || (el as HTMLInputElement).value) {
+                // pause typing while user is interacting with input
+                timerRef.current = window.setTimeout(loop, 500);
+                return;
+            }
+
+            const phrase = phrases[idxRef.current % phrases.length];
+            if (charRef.current <= phrase.length) {
+                el.placeholder = phrase.slice(0, charRef.current);
+                charRef.current++;
+                timerRef.current = window.setTimeout(loop, typeSpeed);
+            } else {
+                // finished typing one phrase, wait then clear and next
+                timerRef.current = window.setTimeout(() => {
+                    charRef.current = 0;
+                    idxRef.current++;
+                    // small delay before typing next
+                    timerRef.current = window.setTimeout(loop, 200);
+                }, pause);
+            }
+        };
+
+        loop();
+
+        return () => {
+            if (timerRef.current) window.clearTimeout(timerRef.current);
+            if (io && heroEl) io.unobserve(heroEl);
+            if (el) el.placeholder = '';
+        };
+    }, [inputRef, phrases, typeSpeed, pause]);
+}
+
+const Hero = ({ onSearch, slides, categories }: { onSearch: (query: string) => void; slides: HeroSlide[]; categories?: string[] }) => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isFading, setIsFading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
     
     const activeSlides = slides && slides.length > 0 ? slides : [{id: 0, title: 'Selamat Datang', subtitle: 'Atur hero section dari dashboard admin.', imageUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2070&auto=format&fit=crop' }];
+
+    // derive phrases from categories (unique, non-empty)
+    const phrases = useMemo(() => {
+        if (!categories || categories.length === 0) return ['Cari destinasi, misal: Bali'];
+        const unique = Array.from(new Set(categories.map(s => (s || '').trim()).filter(Boolean)));
+        if (unique.length === 0) return ['Cari destinasi, misal: Bali'];
+        // limit to reasonable number to avoid long cycles
+        return unique.slice(0, 12);
+    }, [categories]);
+
+    // attach typing placeholder to input
+    useTypingPlaceholder(inputRef, phrases, 70, 2200);
 
 
     useEffect(() => {
@@ -65,10 +156,19 @@ const Hero = ({ onSearch, slides }: { onSearch: (query: string) => void; slides:
                 </div>
                 <form className="search-bar" onSubmit={handleSearchSubmit}>
                     <input 
+                        ref={inputRef}
                         type="text" 
-                        placeholder="Cari destinasi, misal 'Bali'" 
+                        aria-label="Cari destinasi"
+                        placeholder="" 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        onFocus={() => {
+                            // clear placeholder immediately on focus to avoid distraction
+                            if (inputRef.current) inputRef.current.placeholder = '';
+                        }}
+                        onBlur={() => {
+                            // no-op: typing hook will resume and re-populate placeholder when appropriate
+                        }}
                     />
                     <button type="submit" aria-label="Cari">
                         <SearchIcon />
@@ -182,9 +282,15 @@ const BlogSection = ({ blogPosts, setPage, onViewDetail, isLoading }: { blogPost
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ onSearch, onViewDetail, onBookNow, onViewBlogDetail, setPage, destinations, blogPosts, appSettings, isLoading = false }) => {
+    // derive categories from destinations to feed the hero typing placeholder
+    const categories = React.useMemo(() => {
+        if (!destinations) return [] as string[];
+        return Array.from(new Set(destinations.flatMap(d => d.categories || [])));
+    }, [destinations]);
+
     return (
         <>
-            <Hero onSearch={onSearch} slides={appSettings.heroSlides} />
+            <Hero onSearch={onSearch} slides={appSettings.heroSlides} categories={categories} />
             <PopularDestinations destinations={destinations} onViewDetail={onViewDetail} onBookNow={onBookNow} isLoading={isLoading} />
             <AllDestinationsSection 
                 destinations={destinations} 
