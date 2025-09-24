@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../../components/Toast';
 import { BlogPost } from '../../types';
 import { BlogPostForm } from '../../components/admin/BlogPostForm';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
@@ -12,6 +13,7 @@ interface AdminBlogPageProps {
 }
 
 export const AdminBlogPage: React.FC<AdminBlogPageProps> = ({ blogPosts, onSave, onDelete }) => {
+    const { showToast } = useToast();
     const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
     const [postToDelete, setPostToDelete] = useState<BlogPost | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -66,6 +68,22 @@ export const AdminBlogPage: React.FC<AdminBlogPageProps> = ({ blogPosts, onSave,
                 setPostToDelete(null);
                 setIsDeleting(false);
             }, 1000);
+        }
+    };
+    
+    // Await the delete handler so modal remains open during deletion and we can
+    // show success/error toasts based on real outcome.
+    const handleConfirmDeleteAsync = async () => {
+        if (!postToDelete) return;
+        setIsDeleting(true);
+        try {
+            await Promise.resolve(onDelete(postToDelete.id));
+            setPostToDelete(null);
+        } catch (err) {
+            console.error('Delete blog post failed', err);
+            // Optionally show toast here if Toast context available in this file
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -128,7 +146,19 @@ export const AdminBlogPage: React.FC<AdminBlogPageProps> = ({ blogPosts, onSave,
                 <ConfirmationModal
                     isOpen={!!postToDelete}
                     onClose={() => setPostToDelete(null)}
-                    onConfirm={handleConfirmDelete}
+                    onConfirm={async () => {
+                        setIsDeleting(true);
+                        try {
+                            await Promise.resolve(onDelete(postToDelete.id));
+                            try { showToast('Artikel berhasil dihapus', 'success'); } catch {}
+                            setPostToDelete(null);
+                        } catch (err) {
+                            console.error('Delete blog post failed', err);
+                            try { showToast('Gagal menghapus artikel. Coba lagi.', 'error'); } catch {}
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    }}
                     title="Konfirmasi Penghapusan"
                     confirmButtonText="Hapus"
                     confirmButtonVariant="danger"

@@ -80,15 +80,19 @@ export const AdminDestinationsPage: React.FC<AdminDestinationsPageProps> = ({ de
         setDestinationToDelete(destination);
     };
 
-    const handleConfirmDelete = () => {
-        if (destinationToDelete) {
-            setIsDeleting(true);
-            // Simulate API call
-            setTimeout(() => {
-                onDelete(destinationToDelete.id);
-                setDestinationToDelete(null);
-                setIsDeleting(false);
-            }, 1000);
+    const handleConfirmDelete = async () => {
+        if (!destinationToDelete) return;
+        setIsDeleting(true);
+        try {
+            // Support both sync and async onDelete handlers
+            await Promise.resolve(onDelete(destinationToDelete.id));
+            try { showToast('Destinasi berhasil dihapus', 'success'); } catch {}
+            setDestinationToDelete(null);
+        } catch (err) {
+            console.error('Delete destination failed', err);
+            try { showToast('Gagal menghapus destinasi. Coba lagi.', 'error'); } catch {}
+        } finally {
+            setIsDeleting(false);
         }
     };
 
