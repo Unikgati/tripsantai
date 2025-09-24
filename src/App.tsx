@@ -448,11 +448,13 @@ const App = () => {
       return;
     }
     try {
-      await sbDeleteDestination(id);
-      setDestinations(prev => prev.filter(d => d.id !== id));
+  // Wait for server ack before removing from local state
+  await sbDeleteDestination(id);
+  setDestinations(prev => prev.filter(d => d.id !== id));
     } catch (err) {
-      console.error('Failed to delete destination from Supabase, falling back to local delete', err);
-      setDestinations(prev => prev.filter(d => d.id !== id));
+  console.error('Failed to delete destination from Supabase', err);
+  // Rethrow so caller (UI) can handle error and keep modal open
+  throw err;
     }
   };
 
@@ -495,11 +497,13 @@ const App = () => {
       return;
     }
     try {
-      await sbDeleteBlogPost(id);
-      setBlogPosts(prev => prev.filter(p => p.id !== id));
+  // Wait for server ack before removing from local state
+  await sbDeleteBlogPost(id);
+  setBlogPosts(prev => prev.filter(p => p.id !== id));
     } catch (err) {
-      console.error('Failed to delete blog post from Supabase, falling back to local delete', err);
-      setBlogPosts(prev => prev.filter(p => p.id !== id));
+  console.error('Failed to delete blog post from Supabase', err);
+  // Rethrow so caller can display error and avoid removing local state
+  throw err;
     }
   };
 
