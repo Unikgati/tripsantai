@@ -17,6 +17,28 @@ const ReviewsPage: React.FC = () => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
+  // static quick templates (Opsi A)
+  const templates = [
+    'Liburan keluarga yang menyenangkan — pelayanan ramah, fasilitas lengkap.',
+    'Destinasi sangat bersih dan aman. Pemandu sangat membantu.',
+    'Harga sebanding dengan pengalaman — sangat direkomendasikan!'
+  ];
+
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  const applyTemplate = (t: string) => {
+    // trim to max 120 and warn if truncated
+    const trimmed = t.slice(0, 120);
+    if (t.length > 120) {
+      setError('Template dipotong karena melebihi batas 120 karakter');
+    } else {
+      setError(null);
+    }
+    setContent(trimmed);
+    // focus textarea so user can edit
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -64,12 +86,20 @@ const ReviewsPage: React.FC = () => {
                 id="review-content"
                 value={content}
                 onChange={e => setContent(e.target.value)}
+                ref={textareaRef}
                 placeholder="Tulis review Anda di sini"
                 aria-label="Review"
                 rows={4}
                 maxLength={120}
                 required
               />
+              <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {templates.map((t, i) => (
+                  <button key={i} type="button" className="btn btn-secondary" onClick={() => applyTemplate(t)} style={{ padding: '6px 10px', borderRadius: 999, fontSize: 13 }} aria-label={`Gunakan template ${i+1}`}>
+                    {t.length > 30 ? t.slice(0, 30) + '…' : t}
+                  </button>
+                ))}
+              </div>
                 <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Nilai:</div>
                   <div aria-hidden style={{ display: 'flex', gap: 6 }}>
