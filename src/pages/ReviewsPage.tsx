@@ -1,28 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { fetchReviews, insertReview } from '../lib/supabase';
+import React, { useState } from 'react';
+import { insertReview } from '../lib/supabase';
 import ReviewCard from '../components/ReviewCard';
 
 const ReviewsPage: React.FC = () => {
-  const [reviews, setReviews] = useState<any[]>([]);
   const [name, setName] = useState('');
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rating, setRating] = useState<number>(5);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await fetchReviews();
-        if (!mounted) return;
-        setReviews(data || []);
-      } catch (e) {
-        console.warn('Failed to fetch reviews', e);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
+  const [submitted, setSubmitted] = useState(false);
 
   const initialsFrom = (full: string) => {
     if (!full) return '';
@@ -38,10 +24,10 @@ const ReviewsPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       const initials = initialsFrom(name);
-      const row = await insertReview({ name: name.trim(), initials, content: content.trim(), rating });
-      setReviews(prev => [row, ...prev]);
+  await insertReview({ name: name.trim(), initials, content: content.trim(), rating });
       setName(''); setContent('');
       setRating(5);
+  setSubmitted(true);
     } catch (err: any) {
       console.error(err);
       setError(err?.message || 'Gagal menyimpan review');
@@ -81,6 +67,7 @@ const ReviewsPage: React.FC = () => {
                 placeholder="Tulis review Anda di sini"
                 aria-label="Review"
                 rows={4}
+                maxLength={120}
                 required
               />
                 <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -99,7 +86,11 @@ const ReviewsPage: React.FC = () => {
                   </div>
                 </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, alignItems: 'center' }}>
-                {error ? <div className="validation-error">{error}</div> : <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{content.length}/1000</div>}
+                {error ? (
+                  <div className="validation-error">{error}</div>
+                ) : (
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 13 }} aria-live="polite">{content.length}/120 karakter</div>
+                )}
                 <div />
               </div>
             </div>
@@ -111,16 +102,11 @@ const ReviewsPage: React.FC = () => {
           </div>
         </div>
 
-        <section style={{ maxWidth: 1024, margin: '0 auto', display: 'grid', gap: '1rem' }}>
-          {reviews.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Belum ada ulasan. Jadilah yang pertama!</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1rem' }}>
-              {reviews.map(r => (
-                <ReviewCard key={r.id} name={r.name} initials={r.initials} content={r.content} created_at={r.created_at} rating={r.rating} />
-              ))}
-            </div>
-          )}
+        {/* Reviews list removed by request; page shows only the form. */}
+        <section style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
+          {submitted ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Terima kasih! Ulasan Anda telah dikirim dan akan muncul setelah moderasi.</div>
+          ) : null}
         </section>
       </div>
     </div>
