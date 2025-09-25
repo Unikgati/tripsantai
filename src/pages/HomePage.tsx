@@ -313,7 +313,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onSearch, onViewDetail, onBo
                                             {isLoading ? (
                                                 Array.from({ length: 3 }).map((_, i) => <ReviewSkeleton key={i} />)
                                             ) : (
-                                                reviews.map(r => <ReviewCard key={r.id} name={r.name} initials={r.initials} content={r.content} created_at={r.created_at} rating={r.rating} />)
+                                                (reviews || []).slice(0, 8).map(r => <ReviewCard key={r.id} name={r.name} initials={r.initials} content={r.content} created_at={r.created_at} rating={r.rating} />)
                                             )}
                         </div>
                     </div>

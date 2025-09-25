@@ -468,28 +468,78 @@ export async function insertReview(review: { name: string; initials: string; con
 
 // Upsert the single settings row (id = 1). `settings` should match AppSettings shape.
 export async function upsertAppSettings(settings: any): Promise<any | null> {
+  const isBrowser = typeof window !== 'undefined';
+  if (isBrowser) {
+    try {
+      const supabase = getSupabaseClient();
+      let sessionToken = '';
+      try { const { data } = await supabase.auth.getSession(); sessionToken = data?.session?.access_token || ''; } catch (e) { sessionToken = ''; }
+      if (!sessionToken) throw new Error('Missing session token. Please login as admin and refresh the page before saving.');
+
+      const resp = await fetch('/api/upsert-app-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+        body: JSON.stringify(settings),
+      });
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => null);
+        const errMsg = `[upsertAppSettings] server endpoint failed ${resp.status} ${text || ''}`;
+        console.warn(errMsg);
+        throw new Error(errMsg);
+      }
+      const json = await resp.json();
+      const row = json?.data ?? null;
+      if (row) {
+        return {
+          theme: row.theme ?? 'light',
+          accentColor: row.accentcolor ?? '#3182ce',
+          brandName: row.brandname ?? 'TravelGo',
+          tagline: row.tagline ?? '',
+          logoLightUrl: row.logolighturl ?? '',
+          logoDarkUrl: row.logodarkurl ?? '',
+          favicon16Url: row.favicon16url ?? '',
+          favicon192Url: row.favicon192url ?? '',
+          favicon512Url: row.favicon512url ?? '',
+          email: row.email ?? '',
+          address: row.address ?? '',
+          whatsappNumber: row.whatsappnumber ?? '',
+          facebookUrl: row.facebookurl ?? '',
+          instagramUrl: row.instagramurl ?? '',
+          twitterUrl: row.twitterurl ?? '',
+          bankName: row.bankname ?? '',
+          bankAccountNumber: row.bankaccountnumber ?? '',
+          bankAccountHolder: row.bankaccountholder ?? '',
+          heroSlides: row.heroslides ?? [],
+        };
+      }
+    } catch (err) {
+      console.warn('[upsertAppSettings] server endpoint call failed, falling back to client upsert', err);
+    }
+    // fall through to client-side upsert as last resort
+  }
+
   const supabase = getSupabaseClient();
   const payload = {
     id: 1,
-  theme: settings.theme,
-  accentcolor: settings.accentColor,
-  brandname: settings.brandName,
-  tagline: settings.tagline,
-  logolighturl: settings.logoLightUrl,
-  logodarkurl: settings.logoDarkUrl,
-  favicon16url: settings.favicon16Url,
-  favicon192url: settings.favicon192Url,
-  favicon512url: settings.favicon512Url,
-  email: settings.email,
-  address: settings.address,
-  whatsappnumber: settings.whatsappNumber,
-  facebookurl: settings.facebookUrl,
-  instagramurl: settings.instagramUrl,
-  twitterurl: settings.twitterUrl,
-  bankname: settings.bankName,
-  bankaccountnumber: settings.bankAccountNumber,
-  bankaccountholder: settings.bankAccountHolder,
-  heroslides: settings.heroSlides ?? [],
+    theme: settings.theme,
+    accentcolor: settings.accentColor,
+    brandname: settings.brandName,
+    tagline: settings.tagline,
+    logolighturl: settings.logoLightUrl,
+    logodarkurl: settings.logoDarkUrl,
+    favicon16url: settings.favicon16Url,
+    favicon192url: settings.favicon192Url,
+    favicon512url: settings.favicon512Url,
+    email: settings.email,
+    address: settings.address,
+    whatsappnumber: settings.whatsappNumber,
+    facebookurl: settings.facebookUrl,
+    instagramurl: settings.instagramUrl,
+    twitterurl: settings.twitterUrl,
+    bankname: settings.bankName,
+    bankaccountnumber: settings.bankAccountNumber,
+    bankaccountholder: settings.bankAccountHolder,
+    heroslides: settings.heroSlides ?? [],
     updated_at: new Date().toISOString(),
   };
 
@@ -501,25 +551,25 @@ export async function upsertAppSettings(settings: any): Promise<any | null> {
   const row = data?.[0] ?? null;
   if (!row) return null;
   return {
-  theme: row.theme ?? 'light',
-  accentColor: row.accentcolor ?? '#3182ce',
-  brandName: row.brandname ?? 'TravelGo',
-  tagline: row.tagline ?? '',
-  logoLightUrl: row.logolighturl ?? '',
-  logoDarkUrl: row.logodarkurl ?? '',
-  favicon16Url: row.favicon16url ?? '',
-  favicon192Url: row.favicon192url ?? '',
-  favicon512Url: row.favicon512url ?? '',
-  email: row.email ?? '',
-  address: row.address ?? '',
-  whatsappNumber: row.whatsappnumber ?? '',
-  facebookUrl: row.facebookurl ?? '',
-  instagramUrl: row.instagramurl ?? '',
-  twitterUrl: row.twitterurl ?? '',
-  bankName: row.bankname ?? '',
-  bankAccountNumber: row.bankaccountnumber ?? '',
-  bankAccountHolder: row.bankaccountholder ?? '',
-  heroSlides: row.heroslides ?? [],
+    theme: row.theme ?? 'light',
+    accentColor: row.accentcolor ?? '#3182ce',
+    brandName: row.brandname ?? 'TravelGo',
+    tagline: row.tagline ?? '',
+    logoLightUrl: row.logolighturl ?? '',
+    logoDarkUrl: row.logodarkurl ?? '',
+    favicon16Url: row.favicon16url ?? '',
+    favicon192Url: row.favicon192url ?? '',
+    favicon512Url: row.favicon512url ?? '',
+    email: row.email ?? '',
+    address: row.address ?? '',
+    whatsappNumber: row.whatsappnumber ?? '',
+    facebookUrl: row.facebookurl ?? '',
+    instagramUrl: row.instagramurl ?? '',
+    twitterUrl: row.twitterurl ?? '',
+    bankName: row.bankname ?? '',
+    bankAccountNumber: row.bankaccountnumber ?? '',
+    bankAccountHolder: row.bankaccountholder ?? '',
+    heroSlides: row.heroslides ?? [],
   };
 }
 

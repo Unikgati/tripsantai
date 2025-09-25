@@ -15,10 +15,13 @@ interface AdminSettingsPageProps {
 const HeroSlideEditor: React.FC<{
     slides: HeroSlide[];
     onSlidesChange: (slides: HeroSlide[]) => void;
-}> = ({ slides, onSlidesChange }) => {
+    // parent-managed pending files keyed by `heroSlide:<id>`
+    onSetPendingSlideFile: (slideId: number, file: File | null) => void;
+    onSlideDelete?: (slideId: number) => void;
+    uploadProgress: Record<string, number>;
+}> = ({ slides, onSlidesChange, onSetPendingSlideFile, onSlideDelete, uploadProgress }) => {
     const [activeSlideIndex, setActiveSlideIndex] = useState<number | null>(0);
     const [slideToDelete, setSlideToDelete] = useState<number | null>(null); // Index of the slide to delete
-    const [slideUploadProgress, setSlideUploadProgress] = useState<Record<number, number>>({});
 
     const toggleSlide = (index: number) => {
         setActiveSlideIndex(prevIndex => (prevIndex === index ? null : index));
@@ -30,30 +33,14 @@ const HeroSlideEditor: React.FC<{
         onSlidesChange(newSlides);
     };
 
-    const handleSlideImageUpload = async (index: number, file: File) => {
-        // show a local preview quickly while uploading
+    // Register a selected file as "pending" and show a local preview (no upload here).
+    const handleSlideFileSelect = (index: number, file: File) => {
         const objectUrl = URL.createObjectURL(file);
         const newSlides = [...slides];
         newSlides[index] = { ...newSlides[index], imageUrl: objectUrl };
         onSlidesChange(newSlides);
-
-        try {
-            setSlideUploadProgress(p => ({ ...p, [index]: 0 }));
-            const res = await uploadToCloudinary(file, (pct: number) => setSlideUploadProgress(p => ({ ...p, [index]: pct })));
-            const uploadedUrl = typeof res === 'string' ? res : res.url;
-            const updated = [...newSlides];
-            updated[index] = { ...updated[index], imageUrl: uploadedUrl };
-            onSlidesChange(updated);
-        } catch (err) {
-            console.warn('[CLOUDINARY] slide upload failed, keeping preview', err);
-            // keep the local preview (objectUrl). Do not replace with base64.
-        } finally {
-            setSlideUploadProgress(p => {
-                const copy = { ...p };
-                delete copy[index];
-                return copy;
-            });
-        }
+        // inform parent to keep the File and mark progress as pending
+        onSetPendingSlideFile(newSlides[index].id, file);
     };
 
     const addSlide = () => {
@@ -150,6 +137,15 @@ const HeroSlideEditor: React.FC<{
                                                         >
                                                             <EditIcon />
                                                         </button>
+                                                        {(() => {
+                                                            const key = `heroSlide:${slide.id}`;
+                                                            const val = uploadProgress[key];
+                                                            return val !== undefined ? (
+                                                                <div className="upload-progress" style={{ alignSelf: 'center' }}>
+                                                                    {val < 0 ? 'Menunggu simpan' : `Mengunggah ${val}%`}
+                                                                </div>
+                                                            ) : null;
+                                                        })()}
                                                     </div>
                                                 </div>
                                             ) : (
@@ -168,7 +164,7 @@ const HeroSlideEditor: React.FC<{
                                             id={`slide-image-input-${index}`}
                                             className="hidden-file-input"
                                             accept="image/*"
-                                            onChange={(e) => e.target.files && e.target.files[0] && handleSlideImageUpload(index, e.target.files[0])}
+                                            onChange={(e) => e.target.files && e.target.files[0] && handleSlideFileSelect(index, e.target.files[0])}
                                         />
                                     </div>
                                 </div>
@@ -256,6 +252,37 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             handleImageUpload(e.target.files[0], key);
         }
     };
+
+    // Called by HeroSlideEditor when a slide file is selected/cleared
+    const handleSetPendingSlideFile = (slideId: number, file: File | null) => {
+        const key = `heroSlide:${slideId}`;
+        if (file) {
+            // If there was an existing image URL for this slide, try to derive its Cloudinary public_id and mark for removal
+            const slide = (localSettings.heroSlides || []).find(s => s.id === slideId);
+            if (slide && slide.imageUrl) {
+                try {
+                    const u = new URL(slide.imageUrl);
+                    const parts = u.pathname.split('/');
+                    const uploadIndex = parts.findIndex(p => p === 'upload');
+                    if (uploadIndex !== -1) {
+                        const remainder = parts.slice(uploadIndex + 1).join('/');
+                        const withoutVersion = remainder.replace(/^v\d+\//, '');
+                        const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
+                        if (publicIdWithPath) {
+                            setRemovedPublicIds(prev => prev.includes(publicIdWithPath) ? prev : [...prev, publicIdWithPath]);
+                        }
+                    }
+                } catch (e) {
+                    // ignore derive errors
+                }
+            }
+            setPendingFiles(p => ({ ...p, [key]: file }));
+            setUploadProgress(p => ({ ...p, [key]: -2 }));
+        } else {
+            setPendingFiles(p => { const copy = { ...p }; delete copy[key]; return copy; });
+            setUploadProgress(p => { const copy = { ...p }; delete copy[key]; return copy; });
+        }
+    };
     
     const handleRemoveImage = async (key: keyof AppSettings) => {
         // remove locally
@@ -319,8 +346,15 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                 try {
                     const res = await uploadToCloudinary(file, (pct: number) => setUploadProgress(p => ({ ...p, [k]: pct })));
                     const uploadedUrl = typeof res === 'string' ? res : res.url;
-                    // write uploaded URL into the finalSettings object
-                    (finalSettings as any)[k] = uploadedUrl;
+                    // If this is a heroSlide key, write uploaded URL into the matching slide by id
+                    if (k.startsWith('heroSlide:')) {
+                        const idStr = k.split(':')[1];
+                        const idNum = Number(idStr);
+                        finalSettings.heroSlides = finalSettings.heroSlides.map(s => s.id === idNum ? { ...s, imageUrl: uploadedUrl } : s);
+                    } else {
+                        // write uploaded URL into the finalSettings object for normal keys
+                        (finalSettings as any)[k] = uploadedUrl;
+                    }
                 } catch (err) {
                     console.warn('[CLOUDINARY] failed to upload pending file for', k, err);
                     showToast('Gagal mengunggah salah satu gambar. Periksa koneksi dan coba lagi.', 'error');
@@ -338,9 +372,13 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             // Persist finalSettings to local state so UI reflects canonical values
             setLocalSettings(finalSettings);
 
-            // Call parent save handler with finalSettings (ensures no data URIs are sent)
+            // Attach removed_public_ids so server can cleanup old Cloudinary assets, then call parent save handler
+            const payload = { ...finalSettings } as any;
+            if (removedPublicIds && removedPublicIds.length > 0) {
+                payload.removed_public_ids = Array.from(new Set(removedPublicIds.filter(Boolean)));
+            }
             try {
-                onSaveSettings(finalSettings);
+                onSaveSettings(payload);
             } catch (err) {
                 console.warn('onSaveSettings threw', err);
             }
@@ -459,7 +497,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                             <button className="btn btn-secondary">Unggah</button>
                             <input type="file" className="file-upload-input" accept="image/*" onChange={(e) => handleFileChange(e, 'logoLightUrl')} />
                             {uploadProgress['logoLightUrl'] !== undefined && (
-                                <div className="upload-progress">Mengunggah {uploadProgress['logoLightUrl']}%</div>
+                                <div className="upload-progress">{uploadProgress['logoLightUrl'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['logoLightUrl']}%`}</div>
                             )}
                         </div>
                         {localSettings.logoLightUrl && (
@@ -479,7 +517,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                             <button className="btn btn-secondary">Unggah</button>
                             <input type="file" className="file-upload-input" accept="image/*" onChange={(e) => handleFileChange(e, 'logoDarkUrl')} />
                             {uploadProgress['logoDarkUrl'] !== undefined && (
-                                <div className="upload-progress">Mengunggah {uploadProgress['logoDarkUrl']}%</div>
+                                <div className="upload-progress">{uploadProgress['logoDarkUrl'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['logoDarkUrl']}%`}</div>
                             )}
                         </div>
                         {localSettings.logoDarkUrl && (
@@ -508,7 +546,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                                     <button className="btn btn-secondary btn-small">Pilih</button>
                                     <input type="file" className="file-upload-input" accept="image/png" onChange={(e) => handleFileChange(e, 'favicon16Url')} />
                                     {uploadProgress['favicon16Url'] !== undefined && (
-                                        <div className="upload-progress">Mengunggah {uploadProgress['favicon16Url']}%</div>
+                                        <div className="upload-progress">{uploadProgress['favicon16Url'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['favicon16Url']}%`}</div>
                                     )}
                                 </div>
                                           {localSettings.favicon16Url && (
@@ -525,7 +563,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                                     <button className="btn btn-secondary btn-small">Pilih</button>
                                     <input type="file" className="file-upload-input" accept="image/png" onChange={(e) => handleFileChange(e, 'favicon192Url')} />
                                     {uploadProgress['favicon192Url'] !== undefined && (
-                                        <div className="upload-progress">Mengunggah {uploadProgress['favicon192Url']}%</div>
+                                        <div className="upload-progress">{uploadProgress['favicon192Url'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['favicon192Url']}%`}</div>
                                     )}
                                 </div>
                                           {localSettings.favicon192Url && (
@@ -542,7 +580,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                                     <button className="btn btn-secondary btn-small">Pilih</button>
                                     <input type="file" className="file-upload-input" accept="image/png" onChange={(e) => handleFileChange(e, 'favicon512Url')} />
                                     {uploadProgress['favicon512Url'] !== undefined && (
-                                        <div className="upload-progress">Mengunggah {uploadProgress['favicon512Url']}%</div>
+                                        <div className="upload-progress">{uploadProgress['favicon512Url'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['favicon512Url']}%`}</div>
                                     )}
                                 </div>
                                           {localSettings.favicon512Url && (
@@ -557,9 +595,11 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             {/* Hero Section Settings */}
             <section className="settings-section">
                 <h3>Pengaturan Hero Section</h3>
-                <HeroSlideEditor 
-                    slides={localSettings.heroSlides} 
+                <HeroSlideEditor
+                    slides={localSettings.heroSlides}
                     onSlidesChange={(newSlides) => setLocalSettings(prev => ({ ...prev, heroSlides: newSlides }))}
+                    onSetPendingSlideFile={handleSetPendingSlideFile}
+                    uploadProgress={uploadProgress}
                 />
             </section>
 
