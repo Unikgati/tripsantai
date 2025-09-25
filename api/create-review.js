@@ -43,9 +43,15 @@ export default async function handler(req, res) {
 
     const initials = computeInitials(name);
 
-    // Sanitize lengths
-    const safeName = name.slice(0, 255);
-    const safeContent = content.slice(0, 4000);
+    // Validate content length (server-side): must be <= 120 characters to match UI
+    if (content.length > 120) {
+      return res.status(400).json({ error: 'Content exceeds maximum length of 120 characters' });
+    }
+
+    // Sanitize lengths and strip basic HTML tags as a lightweight server-side sanitization
+    const stripTags = (s) => String(s).replace(/<[^>]*>/g, '');
+    const safeName = stripTags(name).slice(0, 255);
+    const safeContent = stripTags(content).slice(0, 120);
 
     const payload = {
       name: safeName,
@@ -66,14 +72,14 @@ export default async function handler(req, res) {
       body: JSON.stringify([payload])
     });
 
-    if (!resp.ok) {
+  if (!resp.ok) {
       const txt = await resp.text().catch(() => '<no body>');
       console.error('create-review: insert failed', resp.status, txt);
       return res.status(500).json({ error: 'Insert failed', detail: txt });
     }
 
     const inserted = await resp.json();
-    return res.status(200).json({ data: inserted[0] });
+  return res.status(201).json({ data: inserted[0] });
   } catch (err) {
     console.error('create-review error', err && err.message ? err.message : err);
     return res.status(500).json({ error: 'Internal server error' });
