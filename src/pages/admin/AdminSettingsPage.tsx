@@ -140,9 +140,9 @@ const HeroSlideEditor: React.FC<{
                                                         {(() => {
                                                             const key = `heroSlide:${slide.id}`;
                                                             const val = uploadProgress[key];
-                                                            return val !== undefined ? (
+                                                                return val !== undefined ? (
                                                                 <div className="upload-progress" style={{ alignSelf: 'center' }}>
-                                                                    {val < 0 ? 'Menunggu simpan' : `Mengunggah ${val}%`}
+                                                                    {val < 0 ? null : `Mengunggah ${val}%`}
                                                                 </div>
                                                             ) : null;
                                                         })()}
@@ -497,7 +497,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                             <button className="btn btn-secondary">Unggah</button>
                             <input type="file" className="file-upload-input" accept="image/*" onChange={(e) => handleFileChange(e, 'logoLightUrl')} />
                             {uploadProgress['logoLightUrl'] !== undefined && (
-                                <div className="upload-progress">{uploadProgress['logoLightUrl'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['logoLightUrl']}%`}</div>
+                                <div className="upload-progress">{uploadProgress['logoLightUrl'] < 0 ? null : `Mengunggah ${uploadProgress['logoLightUrl']}%`}</div>
                             )}
                         </div>
                         {localSettings.logoLightUrl && (
@@ -517,7 +517,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                             <button className="btn btn-secondary">Unggah</button>
                             <input type="file" className="file-upload-input" accept="image/*" onChange={(e) => handleFileChange(e, 'logoDarkUrl')} />
                             {uploadProgress['logoDarkUrl'] !== undefined && (
-                                <div className="upload-progress">{uploadProgress['logoDarkUrl'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['logoDarkUrl']}%`}</div>
+                                <div className="upload-progress">{uploadProgress['logoDarkUrl'] < 0 ? null : `Mengunggah ${uploadProgress['logoDarkUrl']}%`}</div>
                             )}
                         </div>
                         {localSettings.logoDarkUrl && (
@@ -546,7 +546,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                                     <button className="btn btn-secondary btn-small">Pilih</button>
                                     <input type="file" className="file-upload-input" accept="image/png" onChange={(e) => handleFileChange(e, 'favicon16Url')} />
                                     {uploadProgress['favicon16Url'] !== undefined && (
-                                        <div className="upload-progress">{uploadProgress['favicon16Url'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['favicon16Url']}%`}</div>
+                                        <div className="upload-progress">{uploadProgress['favicon16Url'] < 0 ? null : `Mengunggah ${uploadProgress['favicon16Url']}%`}</div>
                                     )}
                                 </div>
                                           {localSettings.favicon16Url && (
@@ -563,7 +563,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                                     <button className="btn btn-secondary btn-small">Pilih</button>
                                     <input type="file" className="file-upload-input" accept="image/png" onChange={(e) => handleFileChange(e, 'favicon192Url')} />
                                     {uploadProgress['favicon192Url'] !== undefined && (
-                                        <div className="upload-progress">{uploadProgress['favicon192Url'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['favicon192Url']}%`}</div>
+                                        <div className="upload-progress">{uploadProgress['favicon192Url'] < 0 ? null : `Mengunggah ${uploadProgress['favicon192Url']}%`}</div>
                                     )}
                                 </div>
                                           {localSettings.favicon192Url && (
@@ -580,7 +580,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                                     <button className="btn btn-secondary btn-small">Pilih</button>
                                     <input type="file" className="file-upload-input" accept="image/png" onChange={(e) => handleFileChange(e, 'favicon512Url')} />
                                     {uploadProgress['favicon512Url'] !== undefined && (
-                                        <div className="upload-progress">{uploadProgress['favicon512Url'] < 0 ? 'Menunggu simpan' : `Mengunggah ${uploadProgress['favicon512Url']}%`}</div>
+                                        <div className="upload-progress">{uploadProgress['favicon512Url'] < 0 ? null : `Mengunggah ${uploadProgress['favicon512Url']}%`}</div>
                                     )}
                                 </div>
                                           {localSettings.favicon512Url && (
