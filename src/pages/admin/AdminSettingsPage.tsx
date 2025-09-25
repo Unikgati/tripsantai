@@ -314,19 +314,14 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             setRemovedPublicIds(prev => prev.includes(prevPid as string) ? prev : [...prev, prevPid as string]);
         }
 
-        // update local UI optimistically; actual DB update + cloudinary deletion happen on Save
-        const updated = { ...localSettings, [key]: '' } as AppSettings;
-        setLocalSettings(updated);
-        setIsSaving(true);
-
-        try {
-            onSaveSettings(updated);
-        } catch (err) {
-            console.warn('onSaveSettings threw', err);
-        } finally {
-            // brief delay so user sees saving indicator
-            setTimeout(() => setIsSaving(false), 800);
-        }
+    // update local UI only; actual DB update + Cloudinary deletion will happen when user
+    // explicitly presses the Save button (handleSave). This avoids accidental network
+    // calls when admin is still editing.
+    const updated = { ...localSettings, [key]: '' } as AppSettings;
+    setLocalSettings(updated);
+    // brief visual feedback for the remove action
+    setIsSaving(true);
+    setTimeout(() => setIsSaving(false), 500);
     };
 
     const handleSave = async () => {
