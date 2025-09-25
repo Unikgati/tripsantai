@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { insertReview } from '../lib/supabase';
 import ReviewCard from '../components/ReviewCard';
+import { useToast } from '../components/Toast';
 
 const ReviewsPage: React.FC = () => {
   const [name, setName] = useState('');
@@ -9,6 +10,7 @@ const ReviewsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [rating, setRating] = useState<number>(5);
   const [submitted, setSubmitted] = useState(false);
+  const { showToast } = useToast();
 
   const initialsFrom = (full: string) => {
     if (!full) return '';
@@ -50,6 +52,8 @@ const ReviewsPage: React.FC = () => {
       setName(''); setContent('');
       setRating(5);
   setSubmitted(true);
+  // show toast success
+  try { showToast && showToast('Terima kasih — ulasan Anda telah dikirim', 'success'); } catch {}
     } catch (err: any) {
       console.error(err);
       setError(err?.message || 'Gagal menyimpan review');
