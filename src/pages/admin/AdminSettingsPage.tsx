@@ -210,6 +210,24 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
         setLocalSettings(prev => ({ ...prev, [name]: value }));
     };
 
+    // Helper to derive Cloudinary public_id from a delivered URL (returns null if cannot derive)
+    const derivePublicIdFromUrl = (url: string | undefined | null) => {
+        if (!url) return null;
+        try {
+            const u = new URL(url);
+            const parts = u.pathname.split('/');
+            const uploadIndex = parts.findIndex(p => p === 'upload');
+            if (uploadIndex === -1) return null;
+            const remainder = parts.slice(uploadIndex + 1).join('/');
+            if (!remainder) return null;
+            const withoutVersion = remainder.replace(/^v\d+\//, '');
+            const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
+            return publicIdWithPath || null;
+        } catch (e) {
+            return null;
+        }
+    };
+
     // Deferred upload: only store selected file and preview; perform real upload on Save
     const handleImageUpload = (file: File, key: keyof AppSettings) => {
         // Show immediate preview as data URL
@@ -241,7 +259,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             }
         };
         const prevUrl = (localSettings as any)[String(key)];
-        const prevPid = deriveFromUrl(prevUrl);
+        const prevPid = derivePublicIdFromUrl(prevUrl);
         if (prevPid) {
             setRemovedPublicIds(prev => prev.includes(prevPid as string) ? prev : [...prev, prevPid as string]);
         }
@@ -260,21 +278,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             // If there was an existing image URL for this slide, try to derive its Cloudinary public_id and mark for removal
             const slide = (localSettings.heroSlides || []).find(s => s.id === slideId);
             if (slide && slide.imageUrl) {
-                try {
-                    const u = new URL(slide.imageUrl);
-                    const parts = u.pathname.split('/');
-                    const uploadIndex = parts.findIndex(p => p === 'upload');
-                    if (uploadIndex !== -1) {
-                        const remainder = parts.slice(uploadIndex + 1).join('/');
-                        const withoutVersion = remainder.replace(/^v\d+\//, '');
-                        const publicIdWithPath = withoutVersion.replace(/\.[^/.]+$/, '');
-                        if (publicIdWithPath) {
-                            setRemovedPublicIds(prev => prev.includes(publicIdWithPath) ? prev : [...prev, publicIdWithPath]);
-                        }
-                    }
-                } catch (e) {
-                    // ignore derive errors
-                }
+                const pid = derivePublicIdFromUrl(slide.imageUrl);
+                if (pid) setRemovedPublicIds(prev => prev.includes(pid as string) ? prev : [...prev, pid as string]);
             }
             setPendingFiles(p => ({ ...p, [key]: file }));
             setUploadProgress(p => ({ ...p, [key]: -2 }));
@@ -282,6 +287,22 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
             setPendingFiles(p => { const copy = { ...p }; delete copy[key]; return copy; });
             setUploadProgress(p => { const copy = { ...p }; delete copy[key]; return copy; });
         }
+    };
+
+    // Called when the slides array changes. We diff previous slides and new slides to detect deletions
+    const handleSlidesChange = (newSlides: HeroSlide[]) => {
+        const prevSlides = localSettings.heroSlides || [];
+        const removed = prevSlides.filter(ps => !newSlides.find(ns => ns.id === ps.id));
+        if (removed.length > 0) {
+            const pids = removed.map(r => derivePublicIdFromUrl(r.imageUrl)).filter(Boolean) as string[];
+            if (pids.length > 0) {
+                setRemovedPublicIds(prev => {
+                    const set = new Set(prev.concat(pids));
+                    return Array.from(set);
+                });
+            }
+        }
+        setLocalSettings(prev => ({ ...prev, heroSlides: newSlides }));
     };
     
     const handleRemoveImage = async (key: keyof AppSettings) => {
@@ -597,7 +618,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
                 <h3>Pengaturan Hero Section</h3>
                 <HeroSlideEditor
                     slides={localSettings.heroSlides}
-                    onSlidesChange={(newSlides) => setLocalSettings(prev => ({ ...prev, heroSlides: newSlides }))}
+                    onSlidesChange={handleSlidesChange}
                     onSetPendingSlideFile={handleSetPendingSlideFile}
                     uploadProgress={uploadProgress}
                 />
