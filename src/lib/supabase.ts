@@ -424,6 +424,48 @@ export async function fetchAppSettings(): Promise<any | null> {
   };
 }
 
+export async function fetchReviews(): Promise<any[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    ...row,
+    rating: row.rating ?? 5,
+    created_at: row.created_at ?? row.createdAt ?? null,
+  }));
+}
+
+export async function insertReview(review: { name: string; initials: string; content: string; rating?: number }): Promise<any> {
+  const isBrowser = typeof window !== 'undefined';
+  const payload = {
+    name: review.name,
+    initials: review.initials,
+    content: review.content,
+    rating: review.rating ?? 5,
+  };
+
+  if (isBrowser) {
+    // Post to server endpoint which validates and inserts using service_role key
+    const resp = await fetch('/api/create-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => null);
+      throw new Error(`Server error: ${resp.status} ${txt || ''}`);
+    }
+    const json = await resp.json();
+    return json?.data ?? null;
+  }
+
+  // Server-side fallback: insert directly using Supabase client
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from('reviews').insert(payload).select();
+  if (error) throw error;
+  return (data && data[0]) || null;
+}
+
 // Upsert the single settings row (id = 1). `settings` should match AppSettings shape.
 export async function upsertAppSettings(settings: any): Promise<any | null> {
   const supabase = getSupabaseClient();

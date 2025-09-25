@@ -2158,6 +2158,27 @@ body.dark .discount-badge {
     border: 1px solid var(--border-color);
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
+
+/* Reviews form: make form card wider on desktop while staying centered and responsive */
+.reviews-form-card {
+    width: 100%;
+    max-width: 720px; /* default for tablet / small desktop */
+    margin-left: auto;
+    margin-right: auto;
+}
+@media (min-width: 1024px) {
+    .reviews-form-card {
+        max-width: 900px; /* slightly narrower on larger screens */
+    }
+}
+
+/* Ensure textarea inside reviews form matches input font/size/line-height */
+.reviews-form-card .admin-form textarea {
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

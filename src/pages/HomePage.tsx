@@ -17,7 +17,9 @@ interface HomePageProps {
     blogPosts: BlogPost[];
     appSettings: AppSettings;
     isLoading?: boolean;
+    reviews?: any[];
 }
+import ReviewCard from '../components/ReviewCard';
 
 // Typing placeholder hook: cycles through phrases and types them into the input's placeholder
 function useTypingPlaceholder(inputRef: React.RefObject<HTMLInputElement>, phrases: string[], typeSpeed = 80, pause = 2000) {
@@ -281,7 +283,7 @@ const BlogSection = ({ blogPosts, setPage, onViewDetail, isLoading }: { blogPost
     );
 }
 
-export const HomePage: React.FC<HomePageProps> = ({ onSearch, onViewDetail, onBookNow, onViewBlogDetail, setPage, destinations, blogPosts, appSettings, isLoading = false }) => {
+export const HomePage: React.FC<HomePageProps> = ({ onSearch, onViewDetail, onBookNow, onViewBlogDetail, setPage, destinations, blogPosts, appSettings, isLoading = false, reviews = [] }) => {
     // derive categories from destinations to feed the hero typing placeholder
     const categories = React.useMemo(() => {
         if (!destinations) return [] as string[];
@@ -299,6 +301,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onSearch, onViewDetail, onBo
                 setPage={setPage}
             />
             <BlogSection blogPosts={blogPosts} setPage={setPage} onViewDetail={onViewBlogDetail} isLoading={isLoading} />
+            {reviews && reviews.length > 0 && (
+                <section className="reviews-section" style={{ padding: '60px 0' }}>
+                    <div className="container">
+                        <div className="section-header">
+                            <h2>Ulasan Pengunjung</h2>
+                            <p>Apa kata mereka tentang pengalaman wisata.</p>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1rem' }}>
+                            {reviews.map(r => <ReviewCard key={r.id} name={r.name} initials={r.initials} content={r.content} created_at={r.created_at} rating={r.rating} />)}
+                        </div>
+                    </div>
+                </section>
+            )}
         </>
     );
 };

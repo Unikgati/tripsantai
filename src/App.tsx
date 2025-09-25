@@ -2,7 +2,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { ToastProvider } from './components/Toast';
 import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { WishlistProvider } from './contexts/WishlistContext';
-import { fetchDestinations, upsertDestination, deleteDestination as sbDeleteDestination, fetchBlogPosts, upsertBlogPost, deleteBlogPost as sbDeleteBlogPost, insertOrder, fetchOrders, updateOrder, fetchAppSettings, upsertAppSettings } from './lib/supabase';
+import { fetchDestinations, upsertDestination, deleteDestination as sbDeleteDestination, fetchBlogPosts, upsertBlogPost, deleteBlogPost as sbDeleteBlogPost, insertOrder, fetchOrders, updateOrder, fetchAppSettings, upsertAppSettings, fetchReviews } from './lib/supabase';
 import { Page, Destination, BlogPost, Order, OrderStatus, AppSettings } from './types';
 import getSupabaseClient from './lib/supabase';
 // Removed demo seed data import to rely solely on Supabase (or empty state)
@@ -18,6 +18,7 @@ import { BlogDetailPage } from './pages/BlogDetailPage';
 import { SearchResultsPage } from './pages/SearchResultsPage';
 import { WishlistPage } from './pages/WishlistPage';
 import { ContactPage } from './pages/ContactPage';
+import ReviewsPage from './pages/ReviewsPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import Loading from './components/Loading';
 const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout').then(module => ({ default: module.AdminLayout })));
@@ -94,6 +95,7 @@ const App = () => {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
 
   // If Supabase env is configured, load remote data on mount
   useEffect(() => {
@@ -102,11 +104,12 @@ const App = () => {
 
     let mounted = true;
     (async () => {
-      try {
-        const remoteDestinations = await fetchDestinations();
-        const remoteBlog = await fetchBlogPosts();
+  try {
+    const remoteDestinations = await fetchDestinations();
+    const remoteBlog = await fetchBlogPosts();
   const remoteOrders = await fetchOrders();
-        if (!mounted) return;
+    const remoteReviews = await fetchReviews();
+    if (!mounted) return;
         // Always apply remote results even when empty arrays are returned. This ensures
         // the app mirrors Supabase state (empty) instead of silently keeping local seed data.
         if (Array.isArray(remoteDestinations)) {
@@ -133,6 +136,10 @@ const App = () => {
         } else {
           // debug log removed in production build
           setSupabaseFetchStatus(prev => ({ ...prev, orders: 'invalid-shape' }));
+        }
+        if (Array.isArray(remoteReviews)) {
+          setReviews(remoteReviews || []);
+          setSupabaseFetchStatus(prev => ({ ...prev, reviews: `ok (${remoteReviews.length})`}));
         }
       } catch (err) {
         console.warn('Supabase fetch failed, keeping local seed data', err);
@@ -752,7 +759,7 @@ const App = () => {
   // New routing using react-router while keeping legacy `setPage` for compatibility
   const renderRoutes = () => (
     <Routes>
-  <Route path="/" element={<HomePage onSearch={handleSearch} onViewDetail={handleViewDetail} onBookNow={handleBookNow} onViewBlogDetail={handleViewBlogDetail} setPage={setPage} destinations={destinations} blogPosts={blogPosts} appSettings={appSettings} isLoading={homeIsLoading} />} />
+  <Route path="/" element={<HomePage onSearch={handleSearch} onViewDetail={handleViewDetail} onBookNow={handleBookNow} onViewBlogDetail={handleViewBlogDetail} setPage={setPage} destinations={destinations} blogPosts={blogPosts} appSettings={appSettings} isLoading={homeIsLoading} reviews={reviews} />} />
   <Route path="/destinations" element={<DestinationsPage allDestinations={destinations} onViewDetail={handleViewDetail} onBookNow={handleBookNow} isLoading={homeIsLoading} />} />
   <Route path="/destinations/:slug" element={<DestinationDetailWrapper />} />
   <Route path="/blog" element={<BlogPage blogPosts={blogPosts} onViewDetail={handleViewBlogDetail} isLoading={homeIsLoading} brandName={appSettings.brandName} />} />
@@ -760,6 +767,7 @@ const App = () => {
       <Route path="/search" element={<SearchResultsPage query={searchQuery} setPage={setPage} onViewDetail={handleViewDetail} onBookNow={handleBookNow} allDestinations={destinations} />} />
       <Route path="/wishlist" element={<WishlistPage setPage={setPage} onViewDetail={handleViewDetail} onBookNow={handleBookNow} allDestinations={destinations} />} />
       <Route path="/contact" element={<ContactPage />} />
+      <Route path="/reviews" element={<ReviewsPage />} />
   <Route path="/admin/*" element={isAuthenticated ? (
         <Suspense fallback={<Loading message="Memuat dashboard admin..." size="large" />}>
           <AdminLayout 
