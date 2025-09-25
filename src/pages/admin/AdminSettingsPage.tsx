@@ -319,9 +319,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
     // calls when admin is still editing.
     const updated = { ...localSettings, [key]: '' } as AppSettings;
     setLocalSettings(updated);
-    // brief visual feedback for the remove action
-    setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 500);
+    // Inform the admin that change is local and needs explicit save
+    showToast('Gambar dihapus secara lokal. Tekan "Simpan Pengaturan" untuk menyimpan perubahan.', 'info');
     };
 
     const handleSave = async () => {
