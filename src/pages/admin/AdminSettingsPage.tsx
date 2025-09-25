@@ -307,44 +307,22 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ appSetting
     
     const handleRemoveImage = async (key: keyof AppSettings) => {
         // remove locally
+        // derive possible public_id from the current value so server can delete the asset on Save
+        const prevUrl = (localSettings as any)[String(key)];
+        const prevPid = derivePublicIdFromUrl(prevUrl);
+        if (prevPid) {
+            setRemovedPublicIds(prev => prev.includes(prevPid as string) ? prev : [...prev, prevPid as string]);
+        }
+
+        // update local UI optimistically; actual DB update + cloudinary deletion happen on Save
         const updated = { ...localSettings, [key]: '' } as AppSettings;
         setLocalSettings(updated);
         setIsSaving(true);
 
-        // call parent save handler optimistically to clear UI and persist change
         try {
             onSaveSettings(updated);
         } catch (err) {
             console.warn('onSaveSettings threw', err);
-        }
-
-        // Also attempt a direct Supabase update to ensure the DB reflects removal.
-        // This is a best-effort fallback and will re-sync settings from server after.
-        try {
-            const supabase = getSupabaseClient();
-            // Map AppSettings keys to DB column names used in upsertAppSettings
-            const keyMap: Record<string, string> = {
-                logoLightUrl: 'logolighturl',
-                logoDarkUrl: 'logodarkurl',
-                favicon16Url: 'favicon16url',
-                favicon192Url: 'favicon192url',
-                favicon512Url: 'favicon512url',
-            };
-            const dbCol = keyMap[String(key)] ?? String(key).toLowerCase();
-            const { error } = await supabase.from('app_settings').update({ [dbCol]: '' }).eq('id', 1);
-            if (error) {
-                console.warn('[SUPABASE] direct update failed', error.message || error);
-            } else {
-                // refetch canonical settings and sync parent
-                try {
-                    const remote = await fetchAppSettings();
-                    if (remote) onSaveSettings(remote);
-                } catch (e) {
-                    console.warn('[SUPABASE] failed to re-fetch settings after removal', e);
-                }
-            }
-        } catch (err) {
-            console.warn('[SUPABASE] remove-image fallback failed', err);
         } finally {
             // brief delay so user sees saving indicator
             setTimeout(() => setIsSaving(false), 800);
